@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.critic.Critic</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>criticapp</string>
+			</array>
+		</dict>
+	</array>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>whatsapp</string>
+		<string>fb</string>
+		<string>snapchat</string>
+	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Critic uses your location to show nearby people and relevant reviews.</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Fonts/Manrope-Bold.ttf</string>
+		<string>Fonts/Manrope-ExtraBold.ttf</string>
+		<string>Fonts/Manrope-ExtraLight.ttf</string>
+		<string>Fonts/Manrope-Light.ttf</string>
+		<string>Fonts/Manrope-Medium.ttf</string>
+		<string>Fonts/Manrope-Regular.ttf</string>
+		<string>Fonts/Manrope-SemiBold.ttf</string>
+	</array>
+</dict>
+</plist>

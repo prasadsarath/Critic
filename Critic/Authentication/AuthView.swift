@@ -1,0 +1,1524 @@
+//
+//  Critic
+//
+//  Created by chinni Rayapudi on 8/16/25.
+//
+
+import SwiftUI
+import Combine
+import CoreLocation
+import Foundation
+import UIKit   // for UIViewController in AuthViewModel
+
+// MARK: - List Background Hider (shared; NOT private)
+struct ScrollBGHider: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 16.0, *) {
+            content.scrollContentBackground(.hidden)
+        } else {
+            content
+        }
+    }
+}
+
+// MARK: - Flat Tab Bar
+struct FlatTabBar: View {
+    @Binding var selectedTab: Int
+    let tabs: [String]
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(tabs.indices, id: \.self) { idx in
+                Button {
+                    selectedTab = idx
+                } label: {
+                    Text(tabs[idx])
+                        .font(.critic(.caption))
+                        .foregroundColor(selectedTab == idx ? .white : Theme.subtleText)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 42)
+                        .background(
+                            RoundedRectangle(cornerRadius: CriticRadius.sm, style: .continuous)
+                                .fill(selectedTab == idx ? Theme.tint : .clear)
+                                .shadow(
+                                    color: selectedTab == idx ? Theme.tint.opacity(0.22) : .clear,
+                                    radius: 10,
+                                    x: 0,
+                                    y: 4
+                                )
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(4)
+        .background(
+            RoundedRectangle(cornerRadius: CriticRadius.md, style: .continuous)
+                .fill(Theme.surfaceVariant)
+        )
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 10)
+        .background(Theme.background)
+    }
+}
+
+private struct UserMetaChip: View {
+    let icon: String
+    let label: String
+    var color: Color = Theme.tint
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(color)
+            Text(label)
+                .font(.critic(.caption))
+                .foregroundColor(CriticPalette.onSurface)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            Capsule(style: .continuous)
+                .fill(CriticPalette.surface)
+                .overlay(Capsule(style: .continuous).stroke(CriticPalette.outline, lineWidth: 1))
+        )
+    }
+}
+
+private struct UserActionButton: View {
+    let title: String
+    let icon: String
+    let filled: Bool
+    let color: Color
+    let action: () -> Void
+
+    var body: some View {
+        if filled {
+            Button(action: action) {
+                HStack(spacing: 6) {
+                    Image(systemName: icon)
+                        .font(.system(size: 16, weight: .semibold))
+                    Text(title)
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(CriticFilledButtonStyle(backgroundColor: color))
+        } else {
+            Button(action: action) {
+                HStack(spacing: 6) {
+                    Image(systemName: icon)
+                        .font(.system(size: 16, weight: .semibold))
+                    Text(title)
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(CriticOutlinedButtonStyle(foregroundColor: color))
+        }
+    }
+}
+
+// MARK: - Users List View (row tap → open profile; buttons unchanged)
+struct UsersListView: View {
+    let centerUser: UserLocation
+    let allUsers: [UserLocation]
+
+    let onWrite: (UserLocation) -> Void
+    var onTagToggle: ((UserLocation) -> Void)? = nil
+    var isTagged: ((UserLocation) -> Bool)? = nil
+    let onOpenProfile: (UserLocation) -> Void
+
+    var body: some View {
+        if allUsers.isEmpty {
+            VStack(spacing: 14) {
+                CriticSoftIcon(systemName: "person.3", color: Theme.info, size: 56, iconSize: 24)
+                Text("No nearby users yet")
+                    .font(.critic(.pageTitle))
+                    .foregroundColor(CriticPalette.onSurface)
+                Text("Pull to refresh or wait for the live socket to update.")
+                    .font(.critic(.body))
+                    .foregroundColor(CriticPalette.onSurfaceMuted)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(24)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Theme.background)
+        } else {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 12) {
+                    ForEach(allUsers) { user in
+                        let displayName = DisplayNameResolver.resolve(displayName: user.displayName, userId: user.id)
+                        let distance = calculateDistance(from: centerUser, to: user)
+                        let tagged = isTagged?(user) ?? false
+
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(spacing: 12) {
+                                AvatarView(
+                                    urlString: user.profileUrl,
+                                    seed: user.displayName ?? user.id,
+                                    fallbackSystemName: user.profileImageName,
+                                    size: 48,
+                                    backgroundColor: Theme.surface,
+                                    tintColor: Theme.tint
+                                )
+
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text(displayName)
+                                        .font(.critic(.sectionHeader))
+                                        .foregroundColor(CriticPalette.onSurface)
+                                    HStack(spacing: 8) {
+                                        UserMetaChip(icon: "location", label: "\(homeFormatMeters(distance)) away", color: Theme.tint)
+                                        if tagged {
+                                            UserMetaChip(icon: "tag", label: "Tagged", color: Theme.warning)
+                                        }
+                                    }
+                                }
+
+                                Spacer(minLength: 8)
+
+                                Button {
+                                    onOpenProfile(user)
+                                } label: {
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 18, weight: .semibold))
+                                        .foregroundColor(CriticPalette.onSurfaceMuted)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .contentShape(Rectangle())
+                            .onTapGesture { onOpenProfile(user) }
+
+                            HStack(spacing: 10) {
+                                if let onTagToggle {
+                                    UserActionButton(
+                                        title: tagged ? "Untag" : "Tag",
+                                        icon: tagged ? "minus.circle" : "tag",
+                                        filled: false,
+                                        color: tagged ? Theme.error : Theme.tint,
+                                        action: { onTagToggle(user) }
+                                    )
+                                }
+
+                                UserActionButton(
+                                    title: "Write",
+                                    icon: "square.and.pencil",
+                                    filled: true,
+                                    color: Theme.tint,
+                                    action: { onWrite(user) }
+                                )
+                            }
+                        }
+                        .padding(16)
+                        .criticCard()
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 2)
+                .padding(.bottom, 24)
+            }
+            .background(Theme.background)
+        }
+    }
+}
+
+// MARK: - Relative User Map View (Info → profile; Write unchanged)
+struct RelativeUserMap: View {
+    let centerUser: UserLocation
+    let otherUsers: [UserLocation]
+    let onWrite: (UserLocation) -> Void
+    let onOpenProfile: (UserLocation) -> Void
+
+    @Binding var selectedUser: UserLocation?
+    @Binding var selectedDistance: Double?
+
+    @State private var scale: CGFloat = 20.0
+    @GestureState private var gestureScale: CGFloat = 1.0
+    let minZoom: CGFloat = 1.0
+    let maxZoom: CGFloat = 70.0
+
+    @State private var lastScreenPoint: [String: CGPoint] = [:]
+
+    func convertToXY(from user: UserLocation) -> CGPoint {
+        let metersPerDegreeLat = 111_000.0
+        let metersPerDegreeLng = 111_320.0 * cos(centerUser.latitude * .pi / 180.0)
+        let dx = (user.longitude - centerUser.longitude) * metersPerDegreeLng
+        let dy = (user.latitude - centerUser.latitude) * metersPerDegreeLat
+        return CGPoint(x: dx, y: -dy)
+    }
+
+    private func durationForMove(from: CGPoint, to: CGPoint) -> Double {
+        let dx = to.x - from.x, dy = to.y - from.y
+        let dist = sqrt(dx*dx + dy*dy)
+        let baseSpeedPxPerSec: CGFloat = 40
+        let minDur: Double = 0.45
+        let maxDur: Double = 4.0
+        let seconds = Double(dist / baseSpeedPxPerSec)
+        return min(max(seconds, minDur), maxDur)
+    }
+
+    var body: some View {
+        GeometryReader { geo in
+            let center = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
+
+            ZStack {
+                Theme.surface
+
+                ForEach([12.0, 7.0, 3.5], id: \.self) { ring in
+                    Circle()
+                        .fill(Theme.tint.opacity(ring == 3.5 ? 0.04 : 0.015))
+                        .overlay(Circle().stroke(Theme.outline, lineWidth: 1))
+                        .frame(width: CGFloat(ring * 2) * scale, height: CGFloat(ring * 2) * scale)
+                        .position(center)
+                }
+
+                Circle()
+                    .fill(Theme.tint)
+                    .frame(width: 46, height: 46)
+                    .overlay(
+                        Text("You")
+                            .font(.critic(.caption))
+                            .foregroundColor(.white)
+                    )
+                    .shadow(color: Color(hex: 0x232B45, alpha: 0.08), radius: 14, x: 0, y: 6)
+                    .position(center)
+
+                ForEach(otherUsers) { user in
+                    let rel = convertToXY(from: user)
+                    let currentPoint = CGPoint(x: center.x + rel.x * scale,
+                                               y: center.y + rel.y * scale - 8)
+                    let prevPoint = lastScreenPoint[user.id] ?? currentPoint
+                    let animDur = durationForMove(from: prevPoint, to: currentPoint)
+                    let d = calculateDistance(from: centerUser, to: user)
+                    let isSelected = selectedUser == user
+
+                    ZStack(alignment: .top) {
+                        VStack(spacing: 6) {
+                            AvatarView(
+                                urlString: user.profileUrl,
+                                seed: user.displayName ?? user.id,
+                                fallbackSystemName: user.profileImageName,
+                                size: 40,
+                                backgroundColor: Theme.surface,
+                                tintColor: Theme.tint
+                            )
+                            .overlay(Circle().stroke(isSelected ? Theme.tint : .clear, lineWidth: 2))
+                            .onTapGesture {
+                                selectedUser = user
+                                selectedDistance = d
+                            }
+
+                            Text("\(DisplayNameResolver.resolve(displayName: user.displayName, userId: user.id)) · \(homeFormatMeters(d)) away")
+                                .font(.critic(.caption))
+                                .foregroundColor(CriticPalette.onSurface)
+                                .lineLimit(1)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(
+                                    Capsule(style: .continuous)
+                                        .fill(CriticPalette.surface.opacity(0.96))
+                                        .overlay(Capsule(style: .continuous).stroke(CriticPalette.outline, lineWidth: 1))
+                                )
+                        }
+
+                        if isSelected {
+                            HStack(spacing: 8) {
+                                Button {
+                                    onWrite(user)
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "square.and.pencil")
+                                        Text("Write")
+                                    }
+                                    .font(.critic(.caption))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 7)
+                                    .background(Capsule(style: .continuous).fill(Theme.tint))
+                                }
+                                .buttonStyle(.plain)
+
+                                Button {
+                                    onOpenProfile(user)
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "info.circle")
+                                        Text("Info")
+                                    }
+                                    .font(.critic(.caption))
+                                    .foregroundColor(Theme.accent)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 7)
+                                    .background(Capsule(style: .continuous).fill(CriticPalette.surface))
+                                }
+                                .buttonStyle(.plain)
+
+                                Button {
+                                    NavigationManager.shared.selectedUser = user
+                                    NotificationCenter.default.post(name: ._requestTagToggleFromMap, object: user.id)
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "tag")
+                                        Text("Tag")
+                                    }
+                                    .font(.critic(.caption))
+                                    .foregroundColor(Theme.warning)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 7)
+                                    .background(Capsule(style: .continuous).fill(CriticPalette.surface))
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(8)
+                            .criticCard(radius: CriticRadius.md)
+                            .offset(y: -74)
+                            .transition(.opacity.combined(with: .scale))
+                        }
+                    }
+                    .position(currentPoint)
+                    .animation(.easeInOut(duration: animDur), value: currentPoint)
+                    .onAppear { lastScreenPoint[user.id] = currentPoint }
+                    .onChange(of: currentPoint) { newVal in lastScreenPoint[user.id] = newVal }
+                }
+            }
+            .gesture(
+                MagnificationGesture()
+                    .updating($gestureScale) { value, state, _ in state = value }
+                    .onEnded { value in
+                        let newScale = scale * value
+                        scale = min(max(newScale, minZoom), maxZoom)
+                    }
+            )
+        }
+    }
+}
+
+// MARK: - A tiny first-time connection HUD
+private struct ConnectionHUD: View {
+    enum Phase { case connecting, connectedLoading, ready }
+    let phase: Phase
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 10) {
+            if phase == .ready {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(Theme.success)
+            } else {
+                ProgressView().progressViewStyle(CircularProgressViewStyle())
+            }
+            Text(text)
+                .font(.critic(.caption))
+                .foregroundColor(CriticPalette.onSurface)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(Capsule(style: .continuous).fill(Theme.surface))
+        .overlay(Capsule(style: .continuous).stroke(Theme.outline, lineWidth: 1))
+        .shadow(color: Color(hex: 0x151A2D, alpha: 0.04), radius: 10, x: 0, y: 4)
+    }
+}
+
+// MARK: - Tagged Tab UI (row tap → open profile)
+struct TaggedUsersView: View {
+    let tagged: [TaggedUser]
+    let allUsers: [UserLocation]
+    let onWrite: (UserLocation) -> Void
+    let onUntag: (UserLocation) -> Void
+    let onOpenProfile: (UserLocation) -> Void
+
+    private func lookup(_ id: String) -> UserLocation {
+        allUsers.first(where: { $0.id == id }) ??
+        UserLocation(
+            id: id,
+            latitude: 0,
+            longitude: 0,
+            profileImageName: "person.circle.fill",
+            displayName: id,
+            profileUrl: nil
+        )
+    }
+
+    var body: some View {
+        if tagged.isEmpty {
+            VStack(spacing: 14) {
+                CriticSoftIcon(systemName: "tag", color: Theme.warning, size: 56, iconSize: 24)
+                Text("No active tagged users")
+                    .font(.critic(.pageTitle))
+                    .foregroundColor(CriticPalette.onSurface)
+                Text("Tags expire in 24 hours. Tag someone from Ariel View or List to unlock the review window.")
+                    .font(.critic(.body))
+                    .foregroundColor(CriticPalette.onSurfaceMuted)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(24)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Theme.background)
+        } else {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 12) {
+                    ForEach(tagged) { t in
+                        let user = lookup(t.taggedUserId)
+                        let displayName = DisplayNameResolver.resolve(displayName: user.displayName, userId: user.id)
+
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(spacing: 12) {
+                                AvatarView(
+                                    urlString: user.profileUrl,
+                                    seed: user.displayName ?? user.id,
+                                    fallbackSystemName: user.profileImageName,
+                                    size: 48,
+                                    backgroundColor: Theme.surface,
+                                    tintColor: Theme.tint
+                                )
+
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text(displayName)
+                                        .font(.critic(.sectionHeader))
+                                        .foregroundColor(CriticPalette.onSurface)
+                                    HStack(spacing: 8) {
+                                        UserMetaChip(icon: "tag", label: "Tagged", color: Theme.warning)
+                                        if let left = timeRemainingString(until: t.expiresAt) {
+                                            UserMetaChip(icon: "clock", label: left, color: Theme.info)
+                                        }
+                                    }
+                                }
+
+                                Spacer(minLength: 8)
+
+                                Button {
+                                    onOpenProfile(user)
+                                } label: {
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 18, weight: .semibold))
+                                        .foregroundColor(CriticPalette.onSurfaceMuted)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .contentShape(Rectangle())
+                            .onTapGesture { onOpenProfile(user) }
+
+                            HStack(spacing: 10) {
+                                UserActionButton(
+                                    title: "Write",
+                                    icon: "square.and.pencil",
+                                    filled: true,
+                                    color: Theme.tint,
+                                    action: { onWrite(user) }
+                                )
+                                UserActionButton(
+                                    title: "Untag",
+                                    icon: "minus.circle",
+                                    filled: false,
+                                    color: Theme.error,
+                                    action: { onUntag(user) }
+                                )
+                            }
+                        }
+                        .padding(16)
+                        .criticCard()
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 2)
+                .padding(.bottom, 24)
+            }
+            .background(Theme.background)
+        }
+    }
+}
+
+// MARK: - Unified Alert Payload
+fileprivate enum AlertType {
+    case trace(UserLocation)
+    case tagConfirm(UserLocation)
+    case untagConfirm(UserLocation)
+}
+
+fileprivate struct AlertPayload: Identifiable {
+    let id = UUID()
+    let type: AlertType
+}
+
+private enum HomeTab: Hashable, CaseIterable {
+    case home
+    case list
+    case posts
+    case tagged
+    case contacts
+}
+
+private struct HomeTabPresentation {
+    let title: String
+    let symbol: String
+    let selectedSymbol: String
+    let accent: UIColor
+}
+
+private extension HomeTab {
+    var presentation: HomeTabPresentation {
+        switch self {
+        case .home:
+            return .init(
+                title: "Home",
+                symbol: "house",
+                selectedSymbol: "house.fill",
+                accent: UIColor(Color(hex: 0x5B5CEB))
+            )
+        case .list:
+            return .init(
+                title: "List",
+                symbol: "rectangle.grid.1x2",
+                selectedSymbol: "rectangle.grid.1x2.fill",
+                accent: UIColor(Color(hex: 0x0F766E))
+            )
+        case .posts:
+            return .init(
+                title: "Posts",
+                symbol: "bubble.left.and.bubble.right",
+                selectedSymbol: "bubble.left.and.bubble.right.fill",
+                accent: UIColor(Color(hex: 0xF97316))
+            )
+        case .tagged:
+            return .init(
+                title: "Tagged",
+                symbol: "tag",
+                selectedSymbol: "tag.fill",
+                accent: UIColor(CriticPalette.warning)
+            )
+        case .contacts:
+            return .init(
+                title: "Contacts",
+                symbol: "person.2",
+                selectedSymbol: "person.2.fill",
+                accent: UIColor(Color(hex: 0x4F46E5))
+            )
+        }
+    }
+}
+
+private struct GlossyDockBar: View {
+    @Binding var selectedTab: HomeTab
+    let postsBadgeCount: Int
+
+    private func badgeCount(for tab: HomeTab) -> Int {
+        tab == .posts ? postsBadgeCount : 0
+    }
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(HomeTab.allCases, id: \.self) { tab in
+                let presentation = tab.presentation
+                let accent = Color(uiColor: presentation.accent)
+                let isSelected = selectedTab == tab
+
+                Button {
+                    withAnimation(.spring(response: 0.26, dampingFraction: 0.82)) {
+                        selectedTab = tab
+                    }
+                } label: {
+                    VStack(spacing: 4) {
+                        ZStack(alignment: .topTrailing) {
+                            Image(systemName: isSelected ? presentation.selectedSymbol : presentation.symbol)
+                                .font(.system(size: isSelected ? 17 : 16, weight: isSelected ? .semibold : .medium))
+                                .foregroundColor(accent.opacity(isSelected ? 1 : 0.75))
+                                .frame(height: 18)
+
+                            if badgeCount(for: tab) > 0 {
+                                Text("\(badgeCount(for: tab))")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 5)
+                                    .frame(minWidth: 18, minHeight: 18)
+                                    .background(Capsule(style: .continuous).fill(CriticPalette.error))
+                                    .offset(x: 10, y: -7)
+                            }
+                        }
+
+                        Text(presentation.title)
+                            .font(isSelected ? .custom("Manrope-Bold", size: 10.5) : .custom("Manrope-Medium", size: 10.5))
+                            .foregroundColor(isSelected ? CriticPalette.onSurface : CriticPalette.onSurfaceMuted)
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 4)
+                    .background(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .fill(
+                                isSelected
+                                    ? AnyShapeStyle(
+                                        LinearGradient(
+                                            colors: [
+                                                Color.white.opacity(0.92),
+                                                accent.opacity(0.12)
+                                            ],
+                                            startPoint: .top,
+                                            endPoint: .bottom
+                                        )
+                                    )
+                                    : AnyShapeStyle(Color.clear)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .stroke(
+                                        isSelected
+                                            ? LinearGradient(
+                                                colors: [
+                                                    Color.white.opacity(0.92),
+                                                    accent.opacity(0.22)
+                                                ],
+                                                startPoint: .top,
+                                                endPoint: .bottom
+                                            )
+                                            : LinearGradient(
+                                                colors: [.clear, .clear],
+                                                startPoint: .top,
+                                                endPoint: .bottom
+                                            ),
+                                        lineWidth: 1
+                                    )
+                            )
+                            .overlay(alignment: .top) {
+                                if isSelected {
+                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                        .fill(
+                                            LinearGradient(
+                                                colors: [
+                                                    Color.white.opacity(0.72),
+                                                    Color.white.opacity(0.10)
+                                                ],
+                                                startPoint: .top,
+                                                endPoint: .bottom
+                                            )
+                                        )
+                                        .frame(height: 16)
+                                        .padding(.horizontal, 8)
+                                        .padding(.top, 1)
+                                }
+                            }
+                            .shadow(
+                                color: isSelected ? accent.opacity(0.18) : .clear,
+                                radius: 14,
+                                x: 0,
+                                y: 8
+                            )
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.top, 10)
+        .padding(.bottom, 12)
+        .background(
+            ZStack {
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .fill(.ultraThinMaterial)
+
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.56),
+                                Color.white.opacity(0.16),
+                                Color.white.opacity(0.06)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .stroke(Color.white.opacity(0.72), lineWidth: 1)
+
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .stroke(CriticPalette.outline.opacity(0.38), lineWidth: 1)
+            }
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+        .shadow(color: Color(hex: 0x111827, alpha: 0.09), radius: 26, x: 0, y: 14)
+        .shadow(color: Color.white.opacity(0.55), radius: 14, x: 0, y: -2)
+        .padding(.horizontal, 14)
+        .padding(.bottom, 10)
+    }
+}
+
+private struct PremiumHomeHeaderBar: View {
+    let title: String
+    let address: String
+    let avatarURLString: String?
+    let avatarSeed: String
+    let onTap: () -> Void
+
+    private var addressLabel: String {
+        let trimmed = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "Locating…" : trimmed
+    }
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 12) {
+                AvatarView(
+                    urlString: avatarURLString,
+                    seed: avatarSeed,
+                    fallbackSystemName: "person.crop.circle.fill",
+                    size: 36,
+                    backgroundColor: CriticPalette.surface,
+                    tintColor: CriticPalette.primary
+                )
+                .shadow(color: Color(hex: 0x151A2D, alpha: 0.04), radius: 8, x: 0, y: 3)
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title)
+                        .font(.custom("Manrope-Bold", size: 15.5))
+                        .foregroundColor(CriticPalette.onSurface)
+                        .lineLimit(1)
+
+                    Text(addressLabel)
+                        .font(.custom("Manrope-Medium", size: 11.5))
+                        .foregroundColor(CriticPalette.onSurfaceMuted)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .frame(width: min(UIScreen.main.bounds.width - 104, 300), alignment: .leading)
+            .padding(.leading, 2)
+            .padding(.vertical, 2)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct PremiumHeaderRefreshButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "arrow.clockwise")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(CriticPalette.primary)
+                .frame(width: 30, height: 30)
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(CriticPalette.primarySoft)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .stroke(CriticPalette.primary.opacity(0.12), lineWidth: 1)
+                        )
+                )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Refresh nearby users")
+    }
+}
+
+// MARK: - Home View
+struct HomeView: View {
+    @StateObject private var locationManager = LocationManager()
+    @StateObject private var navigationManager = NavigationManager.shared
+    @State private var profileDestUser: UserLocation? = nil
+
+    // Driven by WebSocket
+    @State private var userLocations: [UserLocation] = []
+    @StateObject private var socket = AWSWebSocketClient(config: AppConfig.socketConfig)
+
+    // UI throttling
+    @State private var nearbyCancellable: AnyCancellable?
+    private let uiUpdateDebounce: TimeInterval = 1.5
+
+    // keep sim ticking
+    private let tick = Timer.publish(every: 10, on: .main, in: .common).autoconnect()
+
+    @State private var selectedUser: UserLocation?
+    @State private var selectedDistance: Double?
+    @State private var selectedTab: HomeTab = .home
+
+    // Live inbox count
+    @StateObject private var inboxVM = InboxCountViewModel()
+
+    // ✅ Tagging VM
+    @StateObject private var tagVM = TagViewModel()
+    @StateObject private var meVM = MeProfileViewModel()
+
+    // Reactive user name shown in top bar
+    @AppStorage("userName") private var storedUserName: String = ""
+    private var displayName: String {
+        DisplayNameResolver.homeHeaderName(
+            storedName: storedUserName,
+            userId: UserDefaults.standard.string(forKey: "userId"),
+            email: UserDefaults.standard.string(forKey: "userEmail")
+        )
+    }
+    private var headerTitle: String {
+        let trimmed = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "Hey" : "Hey \(trimmed)"
+    }
+
+    // First-time connection HUD state
+    @State private var showBootHUD: Bool = true
+    @State private var bootPhase: ConnectionHUD.Phase = .connecting
+    @State private var bootPollCancellable: AnyCancellable?
+    @State private var didShowReadyOnce = false
+
+    // View/app lifecycle
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var isHomeActive: Bool = false
+    @State private var lastNearbySyncAt: Date = .distantPast
+    @State private var lastNearbySyncCoordinate: CLLocationCoordinate2D?
+    @State private var pendingNearbyRefresh: PendingNearbyRefresh?
+    @State private var tagToggleObserver: NSObjectProtocol?
+
+    // ✅ Single active alert only
+    @State private var activeAlert: AlertPayload? = nil
+
+    private struct PendingNearbyRefresh {
+        let force: Bool
+        let promptForLocation: Bool
+        let reason: String
+    }
+
+    private let nearbyRefreshCooldown: TimeInterval = 3
+    private let nearbyRefreshDistanceThreshold: CLLocationDistance = 20
+
+    init() {
+        let appearance = UITabBarAppearance()
+        appearance.configureWithTransparentBackground()
+        UITabBar.appearance().standardAppearance = appearance
+        UITabBar.appearance().isHidden = true
+        if #available(iOS 15.0, *) {
+            UITabBar.appearance().scrollEdgeAppearance = appearance
+        }
+    }
+
+    private func tabIcon(for tab: HomeTab) -> some View {
+        let presentation = tab.presentation
+        let isSelected = selectedTab == tab
+        let configuration = UIImage.SymbolConfiguration(
+            pointSize: isSelected ? 18 : 17,
+            weight: isSelected ? .semibold : .medium,
+            scale: .small
+        )
+        let symbolName = isSelected ? presentation.selectedSymbol : presentation.symbol
+        let alpha = isSelected ? 1.0 : 0.72
+        let image = UIImage(systemName: symbolName, withConfiguration: configuration)?
+            .withTintColor(presentation.accent.withAlphaComponent(alpha), renderingMode: .alwaysOriginal)
+
+        return Image(uiImage: image ?? UIImage())
+            .renderingMode(.original)
+    }
+
+    private func tabLabel(for tab: HomeTab) -> some View {
+        let title = tab.presentation.title
+        return VStack(spacing: 3) {
+            tabIcon(for: tab)
+            Text(title)
+        }
+    }
+
+    private func currentUserId() -> String? {
+        let uid = UserDefaults.standard.string(forKey: "userId")
+        if uid == nil { print("⚠️ [Home] Missing userId. User not fully signed in yet.") }
+        return uid
+    }
+
+    private var centerUser: UserLocation {
+        if let coord = locationManager.effectiveCoordinate {
+            return UserLocation(
+                id: UserDefaults.standard.string(forKey: "userId") ?? "You",
+                latitude: coord.latitude,
+                longitude: coord.longitude,
+                profileImageName: "person.fill",
+                displayName: "You",
+                profileUrl: UserDefaults.standard.string(forKey: "userProfileUrl")  // if you store it
+            )
+        } else if let first = userLocations.first {
+            return UserLocation(
+                id: UserDefaults.standard.string(forKey: "userId") ?? "You",
+                latitude: first.latitude,
+                longitude: first.longitude,
+                profileImageName: "person.fill",
+                displayName: "You",
+                profileUrl: UserDefaults.standard.string(forKey: "userProfileUrl")
+            )
+        } else {
+            return UserLocation(
+                id: UserDefaults.standard.string(forKey: "userId") ?? "You",
+                latitude: 0,
+                longitude: 0,
+                profileImageName: "person.fill",
+                displayName: "You",
+                profileUrl: UserDefaults.standard.string(forKey: "userProfileUrl")
+            )
+        }
+    }
+
+    private var allUsers: [UserLocation] { userLocations }
+    private var nearbyUsers: [UserLocation] {
+        allUsers.filter { calculateDistance(from: centerUser, to: $0) <= 5_000 }
+    }
+    private var activeUsers: [UserLocation] {
+        nearbyUsers.isEmpty ? allUsers : nearbyUsers
+    }
+    private var isLocationDrivenTab: Bool {
+        selectedTab == .home || selectedTab == .list
+    }
+
+    private var statusText: String {
+        switch socket.state {
+        case .connected:  return "Connected"
+        case .connecting: return "Connecting…"
+        case .closing:    return "Closing…"
+        case .closed:     return "Closed"
+        case .failed(let m): return "Failed: \(m)"
+        case .disconnected:  return "Disconnected"
+        }
+    }
+    private var statusColor: Color {
+        switch socket.state {
+        case .connected:  return .green
+        case .connecting: return .orange
+        default:          return .gray
+        }
+    }
+
+    // MARK: - reflect profile url safely (no 33 errors)
+    private func extractProfileURL(from anyValue: Any) -> String? {
+        let mirror = Mirror(reflecting: anyValue)
+        for child in mirror.children {
+            switch child.label {
+            case "profile_url", "profileUrl", "avatarUrl", "avatarURL":
+                return child.value as? String
+            default:
+                continue
+            }
+        }
+        return nil
+    }
+
+    // MARK: - Open profile (centralized)
+    private func openProfile(for user: UserLocation) {
+        if navigationManager.showProfile, profileDestUser == user { return }
+        profileDestUser = user
+        NavigationManager.shared.selectedUser = user
+        NavigationManager.shared.showProfile = true
+        print("[Nav] Open profile for \(user.id)")
+    }
+
+    // MARK: - WebSocket orchestration
+    private func connectSocketIfReady() {
+        guard let uid = currentUserId() else {
+            print("[WS] connect skipped: missing userId")
+            return
+        }
+        guard OIDCAuthManager.shared.hasAuthState else {
+            print("[WS] connect skipped: missing auth state")
+            return
+        }
+        if socket.state.isConnected || socket.state == .connecting {
+            return
+        }
+        print("[WS] Connecting for userId=\(uid)")
+        socket.connect()
+    }
+
+    private func disconnectSocket(reason: String) {
+        if socket.state.isConnected || socket.state == .connecting {
+            print("[WS] Disconnecting (\(reason))")
+        }
+        pendingNearbyRefresh = nil
+        socket.disconnect()
+        userLocations = []
+    }
+
+    private func resolveProfileDest() -> UserLocation? {
+        guard let dest = profileDestUser else { return nil }
+        let me = UserDefaults.standard.string(forKey: "userId")
+        return (dest.id == me) ? nil : dest
+    }
+
+    private var statusStrip: some View {
+        HStack(spacing: 12) {
+            CriticPill(
+                icon: "circle.fill",
+                label: statusText,
+                iconColor: socket.state == .connected ? Theme.success : socket.state == .connecting ? Theme.warning : Theme.subtleText
+            )
+            CriticPill(
+                icon: "person.2",
+                label: "\(activeUsers.count) people in range",
+                iconColor: Theme.tint
+            )
+        }
+        .frame(maxWidth: .infinity, alignment: .center)
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
+        .padding(.bottom, 8)
+        .background(Theme.background)
+    }
+
+    var body: some View {
+        NavigationView {
+            ZStack {
+                Theme.background.ignoresSafeArea()
+
+                TabView(selection: $selectedTab) {
+                    VStack(spacing: 0) {
+                        statusStrip
+                        RelativeUserMap(
+                            centerUser: centerUser,
+                            otherUsers: activeUsers,
+                            onWrite: { user in attemptWrite(user: user) },
+                            onOpenProfile: { user in openProfile(for: user) },
+                            selectedUser: $selectedUser,
+                            selectedDistance: $selectedDistance
+                        )
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                    .background(Theme.background)
+                    .tag(HomeTab.home)
+                    .tabItem {
+                        tabLabel(for: .home)
+                    }
+
+                    VStack(spacing: 0) {
+                        statusStrip
+                        UsersListView(
+                            centerUser: centerUser,
+                            allUsers: activeUsers,
+                            onWrite: { user in attemptWrite(user: user) },
+                            onTagToggle: { user in handleTagToggle(for: user) },
+                            isTagged: { user in tagVM.isTagged(user.id) },
+                            onOpenProfile: { user in openProfile(for: user) }
+                        )
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .padding(.top, 4)
+                    }
+                    .background(Theme.background)
+                    .tag(HomeTab.list)
+                    .tabItem {
+                        tabLabel(for: .list)
+                    }
+
+                    ReviewFeedView(showNavigationTitle: false)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .padding(.top, 4)
+                        .background(Color(.systemGroupedBackground))
+                        .tag(HomeTab.posts)
+                        .tabItem {
+                            tabLabel(for: .posts)
+                        }
+                        .badge(inboxVM.count == 0 ? nil : String(inboxVM.count))
+
+                    TaggedUsersView(
+                        tagged: tagVM.tagged,
+                        allUsers: allUsers,
+                        onWrite: { attemptWrite(user: $0) },
+                        onUntag: { user in handleTagToggle(for: user) },
+                        onOpenProfile: { user in openProfile(for: user) }
+                    )
+                    .padding(.top, 4)
+                    .background(Theme.background)
+                    .tag(HomeTab.tagged)
+                    .tabItem {
+                        tabLabel(for: .tagged)
+                    }
+                    .onAppear {
+                        guard let uid = currentUserId() else { return }
+                        Task { await tagVM.refresh(for: uid) }
+                    }
+                    .refreshable {
+                        guard let uid = currentUserId() else { return }
+                        await tagVM.refresh(for: uid)
+                    }
+
+                    ContactsView(vm: contactsVM) { userId, displayName in
+                        let u = UserLocation(
+                            id: userId,
+                            latitude: centerUser.latitude,
+                            longitude: centerUser.longitude,
+                            profileImageName: "person.circle.fill",
+                            displayName: DisplayNameResolver.resolve(displayName: displayName, userId: userId),
+                            profileUrl: nil
+                        )
+                        attemptWrite(user: u)
+                    }
+                    .padding(.top, 4)
+                    .background(Theme.background)
+                    .tag(HomeTab.contacts)
+                    .tabItem {
+                        tabLabel(for: .contacts)
+                    }
+                }
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    if !navigationManager.showProfile && !navigationManager.showWritePost {
+                        GlossyDockBar(selectedTab: $selectedTab, postsBadgeCount: inboxVM.count)
+                    }
+                }
+
+                NavigationLink(
+                    destination:
+                        ProfileView(otherUser: resolveProfileDest())
+                            .id(profileDestUser?.id ?? "self")
+                            .navigationBarBackButtonHidden(false),
+                    isActive: $navigationManager.showProfile
+                ) { EmptyView() }
+
+                NavigationLink(
+                    destination: WriteReviewView().navigationBarBackButtonHidden(false),
+                    isActive: $navigationManager.showWritePost
+                ) { EmptyView() }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .criticNavigationBarBackground(Theme.background)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    PremiumHomeHeaderBar(
+                        title: headerTitle,
+                        address: locationManager.currentAddress,
+                        avatarURLString: UserDefaults.standard.string(forKey: "userProfileUrl"),
+                        avatarSeed: UserDefaults.standard.string(forKey: "userId") ?? displayName
+                    ) {
+                            let selfUser = UserLocation(
+                                id: UserDefaults.standard.string(forKey: "userId") ?? "me",
+                                latitude: centerUser.latitude,
+                                longitude: centerUser.longitude,
+                                profileImageName: "person.circle.fill",
+                                displayName: displayName,
+                                profileUrl: UserDefaults.standard.string(forKey: "userProfileUrl")
+                            )
+                            openProfile(for: selfUser)
+                    }
+                    .padding(.top, 4)
+                }
+
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    if selectedTab == .home || selectedTab == .list {
+                        PremiumHeaderRefreshButton {
+                            refreshNearbyUsers()
+                        }
+                        .padding(.top, 4)
+                    }
+                }
+            }
+            .task { await meVM.loadIfNeeded() }
+
+            .onAppear {
+                isHomeActive = true
+
+                if storedUserName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                   let name = UserDefaults.standard.string(forKey: "userName"), !name.isEmpty {
+                    storedUserName = name
+                }
+
+                OIDCAuthManager.shared.printUserSnapshot(tag: "Home.onAppear(before refresh)")
+                OIDCAuthManager.shared.refreshIfNeeded { _ in
+                    if let latest = UserDefaults.standard.string(forKey: "userName"),
+                       !latest.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        storedUserName = latest
+                    }
+                    OIDCAuthManager.shared.printUserSnapshot(tag: "Home.onAppear(after refresh)")
+                }
+
+                connectSocketIfReady()
+                syncLocationMonitoring(for: selectedTab)
+                pushAndFetchNearby(force: true, reason: "home appear")
+
+                if let uid = currentUserId() {
+                    inboxVM.start(userId: uid, every: 15)
+                    Task { await tagVM.refresh(for: uid) }
+                }
+
+                bootPollCancellable = Timer.publish(every: 0.25, on: .main, in: .common)
+                    .autoconnect()
+                    .sink { _ in
+                        guard showBootHUD else { return }
+                        switch socket.state {
+                        case .connecting: bootPhase = .connecting
+                        case .connected:
+                            if !didShowReadyOnce { bootPhase = .connectedLoading }
+                        default: break
+                        }
+                    }
+
+                if nearbyCancellable == nil {
+                    nearbyCancellable = socket.$nearbyUsers
+                        .debounce(for: .seconds(uiUpdateDebounce), scheduler: RunLoop.main)
+                        .sink { users in
+                            // 👇 grab profile url safely from whatever struct you have
+                            self.userLocations = users.map { item in
+                                let avatar = extractProfileURL(from: item)
+                                return UserLocation(
+                                    id: item.userId,
+                                    latitude: item.lat,
+                                    longitude: item.lon,
+                                    profileImageName: "person.circle.fill",
+                                    displayName: item.name ?? item.email ?? item.userId,
+                                    profileUrl: avatar
+                                )
+                            }
+                            if !didShowReadyOnce {
+                                didShowReadyOnce = true
+                                bootPhase = .ready
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                                    withAnimation(.easeInOut(duration: 0.25)) { showBootHUD = false }
+                                    bootPollCancellable?.cancel()
+                                    bootPollCancellable = nil
+                                }
+                            }
+                    }
+                }
+
+                if tagToggleObserver == nil {
+                    tagToggleObserver = NotificationCenter.default.addObserver(
+                        forName: ._requestTagToggleFromMap,
+                        object: nil,
+                        queue: .main
+                    ) { notif in
+                        guard let targetId = notif.object as? String,
+                              let u = self.userLocations.first(where: { $0.id == targetId }) else { return }
+                        self.handleTagToggle(for: u)
+                    }
+                }
+            }
+
+            .onReceive(NotificationCenter.default.publisher(for: .didLogin)) { _ in
+                if let latest = UserDefaults.standard.string(forKey: "userName"),
+                   !latest.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    storedUserName = latest
+                }
+                OIDCAuthManager.shared.printUserSnapshot(tag: "didLogin")
+                disconnectSocket(reason: "re-login")
+                connectSocketIfReady()
+                pushAndFetchNearby(force: true, reason: "didLogin")
+            }
+
+            .onReceive(NotificationCenter.default.publisher(for: .didLogout)) { _ in
+                disconnectSocket(reason: "logout")
+            }
+
+            .onReceive(NotificationCenter.default.publisher(for: .jumpToPosted)) { _ in
+                selectedTab = .posts
+            }
+
+            .onDisappear {
+                isHomeActive = false
+                locationManager.stopUpdating()
+                nearbyCancellable?.cancel()
+                nearbyCancellable = nil
+                inboxVM.stop()
+                bootPollCancellable?.cancel()
+                bootPollCancellable = nil
+                disconnectSocket(reason: "view disappear")
+                if let observer = tagToggleObserver {
+                    NotificationCenter.default.removeObserver(observer)
+                    tagToggleObserver = nil
+                }
+            }
+
+            .onChange(of: scenePhase) { phase in
+                guard isHomeActive else { return }
+                switch phase {
+                case .active:
+                    OIDCAuthManager.shared.printUserSnapshot(tag: "scene.active")
+                    if let latest = UserDefaults.standard.string(forKey: "userName"),
+                       !latest.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        storedUserName = latest
+                    }
+                    syncLocationMonitoring(for: selectedTab)
+                    connectSocketIfReady()
+                    pushAndFetchNearby(force: true, reason: "scene active")
+                case .background, .inactive:
+                    locationManager.stopUpdating()
+                    disconnectSocket(reason: "background")
+                @unknown default: break
+                }
+            }
+
+            .onReceive(tick) { _ in
+                guard isHomeActive, isLocationDrivenTab else { return }
+                pushAndFetchNearby(reason: "periodic tick")
+            }
+
+            .onReceive(locationManager.$currentLocation.compactMap { $0 }) { _ in
+                guard isHomeActive else { return }
+                pushAndFetchNearby(reason: "location update")
+            }
+
+            .onReceive(socket.$state.removeDuplicates()) { state in
+                guard isHomeActive else { return }
+                guard case .connected = state, let pending = pendingNearbyRefresh else { return }
+                pushAndFetchNearby(
+                    force: pending.force,
+                    promptForLocation: pending.promptForLocation,
+                    reason: "\(pending.reason) (socket opened)"
+                )
+            }
+
+            .alert(item: $activeAlert) { payload in
+                switch payload.type {
+                case .trace(let user):
+                    return Alert(
+                        title: Text("You are more traceable"),
+                        message: Text("Only \(nearbyUsers.count) users are nearby. You may be easier to trace. This is a disclaimer — you can continue to write and post."),
+                        primaryButton: .cancel(Text("Cancel"), action: { activeAlert = nil }),
+                        secondaryButton: .default(Text("Continue"), action: {
+                            NavigationManager.shared.selectedUser = user
+                            NavigationManager.shared.selectedDistance = calculateDistance(from: centerUser, to: user)
+                            NavigationManager.shared.showWritePost = true
+                            activeAlert = nil
+                        })
+                    )
+                case .tagConfirm(let user):
+                    return Alert(
+                        title: Text("Tag \(DisplayNameResolver.resolve(displayName: user.displayName, userId: user.id))?"),
+                        message: Text("You’re tagging this user. You can post your review in the next 24 hours."),
+                        primaryButton: .cancel(Text("Cancel"), action: { activeAlert = nil }),
+                        secondaryButton: .default(Text("Proceed"), action: {
+                            confirmTagging(user: user); activeAlert = nil
+                        })
+                    )
+                case .untagConfirm(let user):
+                    return Alert(
+                        title: Text("Untag \(DisplayNameResolver.resolve(displayName: user.displayName, userId: user.id))?"),
+                        message: Text("Are you sure you want to untag this user?"),
+                        primaryButton: .cancel(Text("Cancel"), action: { activeAlert = nil }),
+                        secondaryButton: .destructive(Text("Untag"), action: {
+                            confirmUntag(user: user); activeAlert = nil
+                        })
+                    )
+                }
+            }
+        }
+        .navigationViewStyle(.stack)
+        .onChange(of: selectedTab) { tab in
+            syncLocationMonitoring(for: tab)
+            if tab == .home || tab == .list {
+                pushAndFetchNearby(reason: "tab change")
+            }
+            if tab == .tagged {
+                guard let uid = currentUserId() else { return }
+                Task { await tagVM.refresh(for: uid) }
+            }
+        }
+    }
+
+    @StateObject private var contactsVM = ContactsViewModel()
+
+    private func attemptWrite(user: UserLocation) {
+        let contactsUsingApp = contactsVM.registered.count
+
+        if contactsUsingApp > 0 && contactsUsingApp < 5 {
+            activeAlert = AlertPayload(type: .trace(user)); return
+        }
+        if contactsUsingApp == 0 && nearbyUsers.count < 11 {
+            activeAlert = AlertPayload(type: .trace(user)); return
+        }
+
+        NavigationManager.shared.selectedUser = user
+        NavigationManager.shared.selectedDistance = calculateDistance(from: centerUser, to: user)
+        NavigationManager.shared.showWritePost = true
+    }
+
+    private func refreshNearbyUsers() {
+        locationManager.requestAccessIfNeeded()
+        pushAndFetchNearby(force: true, reason: "manual refresh")
+    }
+
+    private func syncLocationMonitoring(for tab: HomeTab) {
+        if tab == .home || tab == .list {
+            locationManager.requestAccessIfNeeded()
+        } else {
+            locationManager.stopUpdating()
+        }
+    }
+
+    private func pushAndFetchNearby(force: Bool = false, promptForLocation: Bool = false, reason: String) {
+        guard socket.state.isConnected else {
+            pendingNearbyRefresh = PendingNearbyRefresh(
+                force: force,
+                promptForLocation: promptForLocation,
+                reason: reason
+            )
+            connectSocketIfReady()
+            return
+        }
+        guard let uid = UserDefaults.standard.string(forKey: "userId") else { return }
+        guard let coord = locationManager.effectiveCoordinate else {
+            if promptForLocation {
+                locationManager.requestAccessIfNeeded()
+            }
+            return
+        }
+
+        if !force {
+            let now = Date()
+            let didCoolDown = now.timeIntervalSince(lastNearbySyncAt) >= nearbyRefreshCooldown
+            let didMoveEnough: Bool
+            if let lastCoord = lastNearbySyncCoordinate {
+                let currentLocation = CLLocation(latitude: coord.latitude, longitude: coord.longitude)
+                let previousLocation = CLLocation(latitude: lastCoord.latitude, longitude: lastCoord.longitude)
+                didMoveEnough = currentLocation.distance(from: previousLocation) >= nearbyRefreshDistanceThreshold
+            } else {
+                didMoveEnough = true
+            }
+
+            guard didCoolDown || didMoveEnough else {
+                print("[WS] Nearby refresh skipped (\(reason)) due to cooldown")
+                return
+            }
+        }
+
+        pendingNearbyRefresh = nil
+        lastNearbySyncAt = Date()
+        lastNearbySyncCoordinate = coord
+
+        let lat = coord.latitude
+        let lon = coord.longitude
+        print("[WS] Location updated and nearby refresh sent (\(reason)) lat=\(lat) lon=\(lon)")
+        
+        socket.sendUpdateLocation(userId: uid, latitude: lat, longitude: lon)
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.socket.sendGetNearbyUsers(userId: uid, latitude: lat, longitude: lon, radiusMeters: 15)
+        }
+    }
+
+    private func handleTagToggle(for user: UserLocation) {
+        let isAlready = tagVM.isTagged(user.id)
+        activeAlert = AlertPayload(type: isAlready ? .untagConfirm(user) : .tagConfirm(user))
+    }
+
+    private func confirmTagging(user: UserLocation) {
+        guard let uid = UserDefaults.standard.string(forKey: "userId") else { return }
+        Task {
+            let ok = await tagVM.tag(userId: uid, targetId: user.id)
+            if ok {
+                selectedTab = .tagged
+                await tagVM.refresh(for: uid)
+            }
+        }
+    }
+
+    private func confirmUntag(user: UserLocation) {
+        guard let uid = UserDefaults.standard.string(forKey: "userId") else { return }
+        Task {
+            let ok = await tagVM.untag(userId: uid, targetId: user.id)
+            if ok, selectedTab == .tagged {
+                await tagVM.refresh(for: uid)
+            }
+        }
+    }
+}
+
+// MARK: - Preview
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        Group {
+            HomeView().preferredColorScheme(.light)
+            HomeView().preferredColorScheme(.dark)
+        }
+    }
+}
