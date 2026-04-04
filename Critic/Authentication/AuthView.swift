@@ -1022,7 +1022,25 @@ struct HomeView: View {
         }
         isSocketConnectPending = false
         pendingNearbyRefresh = nil
-        socket.disconnect()
+        let userId = currentUserId()
+        let shouldUseBackgroundTask = reason == "background" || reason == "logout" || reason == "re-login"
+        var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
+
+        if shouldUseBackgroundTask {
+            backgroundTaskID = UIApplication.shared.beginBackgroundTask(withName: "CriticClearPresence") {
+                if backgroundTaskID != .invalid {
+                    UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                    backgroundTaskID = .invalid
+                }
+            }
+        }
+
+        socket.disconnect(gracefulClearUserId: userId) {
+            if backgroundTaskID != .invalid {
+                UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                backgroundTaskID = .invalid
+            }
+        }
         userLocations = []
     }
 
@@ -1387,7 +1405,9 @@ struct HomeView: View {
                 inboxVM.stop()
                 bootPollCancellable?.cancel()
                 bootPollCancellable = nil
-                disconnectSocket(reason: "view disappear")
+                if scenePhase != .active {
+                    disconnectSocket(reason: "view disappear")
+                }
                 if let observer = tagToggleObserver {
                     NotificationCenter.default.removeObserver(observer)
                     tagToggleObserver = nil

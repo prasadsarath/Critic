@@ -231,16 +231,46 @@ final class AWSWebSocketClient: NSObject, ObservableObject {
     }
 
     func disconnect() {
+        disconnect(gracefulClearUserId: nil, completion: nil)
+    }
+
+    func disconnect(gracefulClearUserId userId: String?, completion: (() -> Void)? = nil) {
         reconnectEnabled = false
         reconnectWorkItem?.cancel(); reconnectWorkItem = nil
         stopPingTimer()
-        receiveLoopActive = false
-        state = .closing
+
         let currentTask = task
-        task = nil
-        currentTask?.cancel(with: .normalClosure, reason: "Client closing".data(using: .utf8))
-        state = .disconnected
-        log("WS → disconnected")
+        guard let currentTask else {
+            receiveLoopActive = false
+            DispatchQueue.main.async {
+                self.nearbyUsers = []
+                self.state = .disconnected
+            }
+            log("WS → disconnected")
+            completion?()
+            return
+        }
+
+        if let userId,
+           state.isConnected,
+           let clearText = encodedText(for: [
+               "action": "clearLocation",
+               "userId": userId
+           ]) {
+            currentTask.send(.string(clearText)) { [weak self] err in
+                if let err {
+                    self?.log("WS → clearLocation send failed: \(err.localizedDescription)")
+                } else {
+                    self?.log("WS → clearLocation sent for userId=\(userId)")
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    self?.finishDisconnect(currentTask, completion: completion)
+                }
+            }
+            return
+        }
+
+        finishDisconnect(currentTask, completion: completion)
     }
 
     func send(text: String) {
@@ -324,12 +354,19 @@ final class AWSWebSocketClient: NSObject, ObservableObject {
 
     // MARK: - Private
     private func send(json: [String: Any]) {
-        guard let data = try? JSONSerialization.data(withJSONObject: json),
-              let text = String(data: data, encoding: .utf8) else {
+        guard let text = encodedText(for: json) else {
             log("send(json:) encoding error")
             return
         }
         send(text: text)
+    }
+
+    private func encodedText(for json: [String: Any]) -> String? {
+        guard let data = try? JSONSerialization.data(withJSONObject: json),
+              let text = String(data: data, encoding: .utf8) else {
+            return nil
+        }
+        return text
     }
 
     private func startReceiveLoop() {
@@ -424,7 +461,10 @@ final class AWSWebSocketClient: NSObject, ObservableObject {
     }
 
     private func handleError(_ msg: String) {
-        DispatchQueue.main.async { self.state = .failed(msg) }
+        DispatchQueue.main.async {
+            self.state = .failed(msg)
+            self.nearbyUsers = []
+        }
         stopPingTimer()
         receiveLoopActive = false
         task = nil
@@ -437,6 +477,23 @@ final class AWSWebSocketClient: NSObject, ObservableObject {
             self.lastEvent = s
             print("WS:", s)
         }
+    }
+
+    private func finishDisconnect(_ currentTask: URLSessionWebSocketTask, completion: (() -> Void)?) {
+        receiveLoopActive = false
+        DispatchQueue.main.async {
+            self.state = .closing
+            self.nearbyUsers = []
+        }
+        if task === currentTask {
+            task = nil
+        }
+        currentTask.cancel(with: .normalClosure, reason: "Client closing".data(using: .utf8))
+        DispatchQueue.main.async {
+            self.state = .disconnected
+        }
+        log("WS → disconnected")
+        completion?()
     }
 }
 
@@ -459,7 +516,10 @@ extension AWSWebSocketClient: URLSessionWebSocketDelegate {
         if task === webSocketTask {
             task = nil
         }
-        DispatchQueue.main.async { self.state = .closed(code: closeCode, reason: reasonStr) }
+        DispatchQueue.main.async {
+            self.state = .closed(code: closeCode, reason: reasonStr)
+            self.nearbyUsers = []
+        }
         stopPingTimer()
         log("Closed code=\(closeCode.rawValue) reason=\(reasonStr ?? "nil")")
         scheduleReconnectIfNeeded()
