@@ -1,6 +1,16 @@
 import Foundation
 
 enum AppEndpoints {
+    private static func configuredURL(forInfoPlistKey key: String, fallback: URL) -> URL {
+        if let raw = Bundle.main.object(forInfoDictionaryKey: key) as? String {
+            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty, let url = URL(string: trimmed) {
+                return url
+            }
+        }
+        return fallback
+    }
+
     enum Auth {
         static let issuer = URL(string: "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_lpHu3UDYg")!
         static let clientID = "7mokregcmnho93vluph4eh21fj"
@@ -16,6 +26,22 @@ enum AppEndpoints {
         static let contactsLookup = baseURL.appendingPathComponent("critic_contacts_lookup")
         static let tagging = baseURL.appendingPathComponent("critic_tagfunction")
         static let blocking = baseURL.appendingPathComponent("critic_blockusersfunction")
+        static let usersMe = baseURL.appendingPathComponent("critic_users_me")
+        static let usersGet = baseURL.appendingPathComponent("critic_users_get")
+        static let usersUpdate = baseURL.appendingPathComponent("critic_users_update")
+        static let profileAvatarUploadURL = baseURL.appendingPathComponent("critic_profile_avatar_upload_url")
+        static let feedbackSubmit = AppEndpoints.configuredURL(
+            forInfoPlistKey: "CriticFeedbackSubmitURL",
+            fallback: baseURL.appendingPathComponent("critic_feedback_submit")
+        )
+        static let feedbackSubmissions = AppEndpoints.configuredURL(
+            forInfoPlistKey: "CriticFeedbackSubmissionsURL",
+            fallback: baseURL.appendingPathComponent("critic_feedback_submissions")
+        )
+        static let usersBridge = AppEndpoints.configuredURL(
+            forInfoPlistKey: "CriticUsersBridgeURL",
+            fallback: baseURL.appendingPathComponent("critic_users_sync")
+        )
     }
 
     enum Lambda {

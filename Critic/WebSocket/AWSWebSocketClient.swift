@@ -16,11 +16,130 @@ struct NearbyUser: Identifiable, Decodable, Equatable {
     let userId: String
     let name: String?
     let email: String?
+    let phone: String?
     let avatarUrl: String?
     let lat: Double
     let lon: Double
     let distanceM: Double?
     let isSimulated: Bool?
+
+    private enum CodingKeys: String, CodingKey {
+        case userId
+        case userID
+        case user_id
+        case name
+        case displayName
+        case display_name
+        case userName
+        case username
+        case aliasName
+        case aliasname
+        case fullName
+        case full_name
+        case preferredUsername
+        case preferred_username
+        case nickname
+        case email
+        case userEmail
+        case phone
+        case phoneNumber
+        case phone_number
+        case mobile
+        case mobileNumber
+        case mobile_number
+        case avatarUrl
+        case avatarURL
+        case profileUrl
+        case profile_url
+        case photoUrl
+        case photo_url
+        case imageUrl
+        case image_url
+        case lat
+        case latitude
+        case lon
+        case lng
+        case longitude
+        case distanceM
+        case distance_m
+        case distanceMeters
+        case distance_meters
+        case distance
+        case isSimulated
+        case is_simulated
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        func firstString(_ keys: [CodingKeys]) -> String? {
+            for key in keys {
+                if let value = try? container.decodeIfPresent(String.self, forKey: key),
+                   !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    return value
+                }
+            }
+            return nil
+        }
+
+        func firstDouble(_ keys: [CodingKeys]) -> Double? {
+            for key in keys {
+                if let value = try? container.decodeIfPresent(Double.self, forKey: key) {
+                    return value
+                }
+                if let stringValue = try? container.decodeIfPresent(String.self, forKey: key),
+                   let value = Double(stringValue.trimmingCharacters(in: .whitespacesAndNewlines)) {
+                    return value
+                }
+            }
+            return nil
+        }
+
+        func firstBool(_ keys: [CodingKeys]) -> Bool? {
+            for key in keys {
+                if let value = try? container.decodeIfPresent(Bool.self, forKey: key) {
+                    return value
+                }
+                if let stringValue = try? container.decodeIfPresent(String.self, forKey: key) {
+                    switch stringValue.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+                    case "true", "1": return true
+                    case "false", "0": return false
+                    default: break
+                    }
+                }
+            }
+            return nil
+        }
+
+        guard let resolvedUserId = firstString([.userId, .userID, .user_id]) else {
+            throw DecodingError.keyNotFound(
+                CodingKeys.userId,
+                DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "Missing nearby user id")
+            )
+        }
+
+        let resolvedName = firstString([.name, .displayName, .display_name, .userName, .username, .aliasName, .aliasname, .fullName, .full_name, .preferredUsername, .preferred_username, .nickname])
+        let resolvedEmail = firstString([.email, .userEmail])
+        let resolvedPhone = firstString([.phone, .phoneNumber, .phone_number, .mobile, .mobileNumber, .mobile_number])
+        let resolvedAvatar = firstString([.avatarUrl, .avatarURL, .profileUrl, .profile_url, .photoUrl, .photo_url, .imageUrl, .image_url])
+
+        guard let resolvedLat = firstDouble([.lat, .latitude]),
+              let resolvedLon = firstDouble([.lon, .lng, .longitude]) else {
+            throw DecodingError.dataCorrupted(
+                DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "Missing nearby user coordinates")
+            )
+        }
+
+        self.userId = resolvedUserId
+        self.name = resolvedName
+        self.email = resolvedEmail
+        self.phone = resolvedPhone
+        self.avatarUrl = resolvedAvatar
+        self.lat = resolvedLat
+        self.lon = resolvedLon
+        self.distanceM = firstDouble([.distanceM, .distance_m, .distanceMeters, .distance_meters, .distance])
+        self.isSimulated = firstBool([.isSimulated, .is_simulated])
+    }
 }
 
 private struct NearbyEnvelope: Decodable {
@@ -28,6 +147,7 @@ private struct NearbyEnvelope: Decodable {
     //  - { "type":"nearbyUsers", "center":{...}, "count":N, "users":[...] }
     //  - { "type":"updateLocationAck", "you":{...}, "nearbyCount":N, "nearby":[...] }
     let type: String?
+    let action: String?
     let users: [NearbyUser]?
     let nearby: [NearbyUser]?
     // optional fields ignored here
@@ -92,14 +212,15 @@ final class AWSWebSocketClient: NSObject, ObservableObject {
     deinit { disconnect() }
 
     // MARK: - Public
-    func connect() {
+    func connect(headers: [String: String] = [:]) {
         guard task == nil || state == .disconnected || isTerminal(state) else {
             log("connect(): ignored; state=\(state.shortText)")
             return
         }
         reconnectEnabled = true
         var req = URLRequest(url: config.url)
-        config.headers.forEach { req.setValue($1, forHTTPHeaderField: $0) }
+        let mergedHeaders = config.headers.merging(headers) { _, new in new }
+        mergedHeaders.forEach { req.setValue($1, forHTTPHeaderField: $0) }
 
         state = .connecting
         log("WS → connecting \(config.url.absoluteString)")
@@ -147,24 +268,57 @@ final class AWSWebSocketClient: NSObject, ObservableObject {
     }
 
     // MARK: - Convenience payloads (match Lambda actions)
-    func sendUpdateLocation(userId: String, latitude: Double, longitude: Double) {
-        let payload: [String: Any] = [
+    func sendUpdateLocation(
+        userId: String,
+        latitude: Double,
+        longitude: Double,
+        displayName: String? = nil,
+        email: String? = nil,
+        profileUrl: String? = nil
+    ) {
+        var payload: [String: Any] = [
             "action": "updateLocation",
             "userId": userId,
             "latitude": latitude,
             "longitude": longitude
         ]
+        if let displayName, !displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            payload["name"] = displayName
+        }
+        if let email, !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            payload["email"] = email
+        }
+        if let profileUrl, !profileUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            payload["profile_url"] = profileUrl
+        }
         send(json: payload)
     }
 
-    func sendGetNearbyUsers(userId: String, latitude: Double, longitude: Double, radiusMeters: Double) {
-        let payload: [String: Any] = [
+    func sendGetNearbyUsers(
+        userId: String,
+        latitude: Double,
+        longitude: Double,
+        radiusMeters: Double,
+        displayName: String? = nil,
+        email: String? = nil,
+        profileUrl: String? = nil
+    ) {
+        var payload: [String: Any] = [
             "action": "getNearbyUsers",
             "userId": userId,
             "latitude": latitude,
             "longitude": longitude,
             "radiusMeters": radiusMeters
         ]
+        if let displayName, !displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            payload["name"] = displayName
+        }
+        if let email, !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            payload["email"] = email
+        }
+        if let profileUrl, !profileUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            payload["profile_url"] = profileUrl
+        }
         send(json: payload)
     }
 
@@ -212,7 +366,24 @@ final class AWSWebSocketClient: NSObject, ObservableObject {
         guard let data = text.data(using: .utf8) else { return }
         if let env = try? JSONDecoder().decode(NearbyEnvelope.self, from: data) {
             let arr = env.users ?? env.nearby ?? []
-            if !arr.isEmpty {
+            let isNearbyUsersPayload = env.type == "nearbyUsers" || env.action == "nearbyUsers"
+            if isNearbyUsersPayload {
+                if arr.isEmpty {
+                    log("[Nearby] parsed 0 user(s)")
+                } else {
+                    let summaries = arr.map {
+                        let raw = $0.name ?? $0.email ?? $0.phone ?? "nil"
+                        return "\($0.userId):\(raw)"
+                    }.joined(separator: ", ")
+                    log("[Nearby] parsed \(arr.count) user(s): \(summaries)")
+                }
+                DispatchQueue.main.async { self.nearbyUsers = arr }
+            } else if !arr.isEmpty {
+                let summaries = arr.map {
+                    let raw = $0.name ?? $0.email ?? $0.phone ?? "nil"
+                    return "\($0.userId):\(raw)"
+                }.joined(separator: ", ")
+                log("[Nearby] parsed \(arr.count) user(s): \(summaries)")
                 DispatchQueue.main.async { self.nearbyUsers = arr }
             }
         }

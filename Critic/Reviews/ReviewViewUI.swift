@@ -38,12 +38,16 @@ private func relative(_ date: Date) -> String {
 
 // MARK: - Small UI helpers
 
-private struct FlatTabBar2: View {
+struct FlatTabBar2: View {
     @Binding var selectedTab: Int
     let tabs: [String]
 
+    private func iconName(for idx: Int) -> String {
+        idx == 0 ? "tray.and.arrow.down.fill" : "paperplane.fill"
+    }
+
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             ForEach(tabs.indices, id: \.self) { idx in
                 let isSelected = selectedTab == idx
 
@@ -52,44 +56,44 @@ private struct FlatTabBar2: View {
                         selectedTab = idx
                     }
                 } label: {
-                    ZStack {
-                        if isSelected {
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            CriticPalette.primary,
-                                            CriticPalette.primaryDark
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .shadow(color: CriticPalette.primary.opacity(0.18), radius: 10, x: 0, y: 5)
-                        }
-
+                    HStack(spacing: 8) {
+                        Image(systemName: iconName(for: idx))
+                            .font(.system(size: 14, weight: .semibold))
                         Text(tabs[idx])
                             .font(isSelected ? .critic(.button) : .critic(.bodyStrong))
-                            .foregroundColor(isSelected ? .white : CriticPalette.onSurfaceMuted)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 40)
-                            .contentShape(Rectangle())
                     }
-                    .frame(height: 40)
+                    .foregroundColor(isSelected ? .white : CriticPalette.onSurfaceMuted)
+                    .padding(.horizontal, 22)
+                    .frame(height: 42)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(
+                                isSelected
+                                    ? AnyShapeStyle(
+                                        LinearGradient(
+                                            colors: [
+                                                CriticPalette.primary,
+                                                CriticPalette.primaryDark
+                                            ],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    : AnyShapeStyle(CriticPalette.surface)
+                            )
+                            .overlay(
+                                Capsule(style: .continuous)
+                                    .stroke(
+                                        isSelected ? CriticPalette.primary.opacity(0.16) : CriticPalette.outline,
+                                        lineWidth: 1
+                                    )
+                            )
+                    )
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(4)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(CriticPalette.surface)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(CriticPalette.outline, lineWidth: 1)
-                )
-                .shadow(color: Color(hex: 0x151A2D, alpha: 0.04), radius: 10, x: 0, y: 4)
-        )
+        .frame(maxWidth: .infinity, alignment: .center)
         .padding(.horizontal, 16)
         .padding(.top, 8)
         .padding(.bottom, 6)
@@ -115,36 +119,112 @@ private func scheduleState(for item: PostItem) -> ScheduleState? {
     return .init(label: text, tint: tint)
 }
 
-// MARK: - Helpers to extract name & avatar (NO ViewBuilder)
-private func displayName(for item: PostItem, context: RowContext) -> String {
+private struct FeedParty {
+    let userId: String?
+    let name: String?
+    let profileUrl: String?
+}
+
+private func normalizedUserId(_ value: String?) -> String? {
+    let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let trimmed, !trimmed.isEmpty else { return nil }
+    return trimmed.lowercased()
+}
+
+private func normalizedIdentityToken(_ value: String?) -> String? {
+    let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let trimmed, !trimmed.isEmpty else { return nil }
+    return trimmed.lowercased()
+}
+
+private func emailLocalPart(_ value: String?) -> String? {
+    guard let token = normalizedIdentityToken(value) else { return nil }
+    return token.split(separator: "@", maxSplits: 1, omittingEmptySubsequences: true).first.map(String.init)
+}
+
+private func currentUserAliases() -> Set<String> {
+    var aliases = Set<String>()
+
+    let rawValues = [
+        UserDefaults.standard.string(forKey: "userId"),
+        UserDefaults.standard.string(forKey: "userName"),
+        UserDefaults.standard.string(forKey: "userEmail")
+    ]
+
+    rawValues.compactMap(normalizedIdentityToken).forEach { value in
+        aliases.insert(value)
+        if let local = emailLocalPart(value) {
+            aliases.insert(local)
+        }
+    }
+
+    return aliases
+}
+
+private func partyMatchesCurrentUser(_ party: FeedParty) -> Bool {
+    let aliases = currentUserAliases()
+    guard !aliases.isEmpty else { return false }
+
+    let candidates = [
+        normalizedIdentityToken(party.userId),
+        normalizedIdentityToken(party.name),
+        emailLocalPart(party.userId),
+        emailLocalPart(party.name)
+    ].compactMap { $0 }
+
+    return candidates.contains(where: { aliases.contains($0) })
+}
+
+private func makeParty(user: UserLite?, fallbackId: String?) -> FeedParty {
+    FeedParty(
+        userId: user?.userId ?? fallbackId,
+        name: user?.name,
+        profileUrl: user?.profileUrl
+    )
+}
+
+private func preferredParty(for item: PostItem, context: RowContext) -> FeedParty {
+    let sender = makeParty(user: item.sender, fallbackId: item.senderId)
+    let receiver = makeParty(user: item.receiver, fallbackId: item.receiverId)
+    let senderMatchesSelf = partyMatchesCurrentUser(sender)
+    let receiverMatchesSelf = partyMatchesCurrentUser(receiver)
+
+    if senderMatchesSelf && !receiverMatchesSelf {
+        return receiver
+    }
+    if receiverMatchesSelf && !senderMatchesSelf {
+        return sender
+    }
+
     switch context {
     case .received:
-        if let n = item.sender?.name, !n.isEmpty { return n }
-        let id = item.sender?.userId ?? item.senderId
-        return DisplayNameResolver.resolve(displayName: nil, userId: id)
+        return sender
     case .posted:
-        if let n = item.receiver?.name, !n.isEmpty { return n }
-        let id = item.receiver?.userId ?? item.receiverId
-        return DisplayNameResolver.resolve(displayName: nil, userId: id)
+        return receiver
     }
+}
+
+// MARK: - Helpers to extract name & avatar (NO ViewBuilder)
+private func displayName(for item: PostItem, context: RowContext) -> String {
+    let party = preferredParty(for: item, context: context)
+    if let n = party.name?.trimmingCharacters(in: .whitespacesAndNewlines), !n.isEmpty {
+        return n
+    }
+    let resolved = DisplayNameResolver.resolve(displayName: nil, userId: party.userId)
+    return resolved.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "User" : resolved
 }
 
 private func avatarURL(for item: PostItem, context: RowContext) -> String? {
-    switch context {
-    case .received:
-        return item.sender?.profileUrl    // <— this is your profile_url
-    case .posted:
-        return item.receiver?.profileUrl
-    }
+    preferredParty(for: item, context: context).profileUrl
 }
 
 private func avatarSeed(for item: PostItem, context: RowContext) -> String? {
-    switch context {
-    case .received:
-        return item.sender?.userId ?? item.senderId ?? item.sender?.name
-    case .posted:
-        return item.receiver?.userId ?? item.receiverId ?? item.receiver?.name
-    }
+    let party = preferredParty(for: item, context: context)
+    return party.userId ?? party.name
+}
+
+private func counterpartUserId(for item: PostItem, context: RowContext) -> String? {
+    preferredParty(for: item, context: context).userId
 }
 
 // MARK: - Post Row
@@ -198,7 +278,7 @@ private struct PostCardRow: View {
             }
         } label: {
             Image(systemName: "ellipsis")
-                .foregroundColor(.secondary)
+                .foregroundColor(CriticPalette.onSurfaceMuted)
                 .padding(.horizontal, 4)
         }
     }
@@ -211,12 +291,12 @@ private struct PostCardRow: View {
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text(title)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundColor(.primary)
+                        .font(.critic(.listTitle))
+                        .foregroundColor(CriticPalette.onSurface)
 
                     Text(message)
-                        .font(.body)
-                        .foregroundColor(.primary)
+                        .font(.critic(.body))
+                        .foregroundColor(CriticPalette.onSurface)
                         .fixedSize(horizontal: false, vertical: true)
 
                     switch context {
@@ -224,19 +304,19 @@ private struct PostCardRow: View {
                         if let schedLabel {
                             HStack(spacing: 6) {
                                 Image(systemName: "clock.fill").font(.caption2)
-                                Text(schedLabel).font(.caption)
+                                Text(schedLabel).font(.critic(.caption))
                             }
                             .foregroundColor(.orange)
                         } else if let created {
                             Text(created)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                                .font(.critic(.caption))
+                                .foregroundColor(CriticPalette.onSurfaceMuted)
                         }
                     case .received:
                         if let created {
                             Text(created)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                                .font(.critic(.caption))
+                                .foregroundColor(CriticPalette.onSurfaceMuted)
                         }
                     }
                 }
@@ -249,8 +329,11 @@ private struct PostCardRow: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(.systemBackground))
-                .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
+                .fill(CriticPalette.surface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(CriticPalette.outline, lineWidth: 1)
+                )
         )
     }
 }
@@ -258,36 +341,48 @@ private struct PostCardRow: View {
 // MARK: - External Profile View
 private struct ExternalProfileView: View {
     let userId: String
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        List {
-            Section {
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 18) {
+                CriticDetailHeader(title: "Profile") {
+                    dismiss()
+                }
+
                 VStack(spacing: 14) {
                     Image(systemName: "person.circle.fill")
-                        .resizable().scaledToFit()
+                        .resizable()
+                        .scaledToFit()
                         .frame(width: 108, height: 108)
-                        .foregroundColor(.accentColor)
-                        .background(Circle().fill(Color(.secondarySystemBackground)))
+                        .foregroundColor(CriticPalette.primary)
+                        .background(Circle().fill(CriticPalette.surfaceVariant))
                         .clipShape(Circle())
 
                     Text(userId.isEmpty ? "User" : userId)
-                        .font(.system(size: 28, weight: .semibold, design: .rounded))
-                        .foregroundColor(.primary)
+                        .font(.critic(.display))
+                        .foregroundColor(CriticPalette.onSurface)
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
-                .listRowBackground(Color(.systemGroupedBackground))
+                .padding(24)
+                .criticCard()
             }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 24)
         }
-        .listStyle(.insetGrouped)
-        .navigationTitle("Profile")
-        .navigationBarTitleDisplayMode(.inline)
-        .background(Color(.systemGroupedBackground).ignoresSafeArea())
+        .background(CriticPalette.background.ignoresSafeArea())
+        .navigationBarBackButtonHidden(true)
+        .navigationBarHidden(true)
     }
 }
 
 // MARK: - Main View
 struct ReviewFeedView: View {
     let showNavigationTitle: Bool
+    let showsTabBar: Bool
+    private let tabSelection: Binding<Int>?
+    @Environment(\.dismiss) private var dismiss
     @StateObject private var vm = ReviewFeedViewModel()
     @State private var selectedTab: Int // 0=Received, 1=Posted
 
@@ -314,13 +409,31 @@ struct ReviewFeedView: View {
     @State private var showBlock = false
     @State private var pendingBlockUserId: String?
 
-    private var currentList: [PostItem] {
-        selectedTab == 0 ? vm.receivedPosts : vm.myPosts
+    private var activeTab: Binding<Int> {
+        tabSelection ?? $selectedTab
     }
 
-    init(initialTab: Int = 0, showNavigationTitle: Bool = true) {
+    private var activeTabValue: Int {
+        activeTab.wrappedValue
+    }
+
+    private var embeddedTopSpacing: CGFloat {
+        0
+    }
+
+    private var currentList: [PostItem] {
+        activeTabValue == 0 ? vm.receivedPosts : vm.myPosts
+    }
+
+    private var emptyCountLabel: String {
+        activeTabValue == 0 ? "0 critics received" : "0 critics posted"
+    }
+
+    init(initialTab: Int = 0, tabSelection: Binding<Int>? = nil, showNavigationTitle: Bool = true, showsTabBar: Bool = true) {
         self.showNavigationTitle = showNavigationTitle
-        _selectedTab = State(initialValue: initialTab)
+        self.showsTabBar = showsTabBar
+        self.tabSelection = tabSelection
+        _selectedTab = State(initialValue: tabSelection?.wrappedValue ?? initialTab)
     }
 
     // MARK: - small row builder
@@ -355,13 +468,7 @@ struct ReviewFeedView: View {
                 }
             }(),
             onAvatarTapped: {
-                let tappedId: String
-                switch context {
-                case .received:
-                    tappedId = item.sender?.userId ?? item.senderId ?? ""
-                case .posted:
-                    tappedId = item.receiver?.userId ?? item.receiverId ?? ""
-                }
+                let tappedId = counterpartUserId(for: item, context: context) ?? ""
                 if !tappedId.isEmpty {
                     externalUserId = tappedId
                     pushExternalProfile = true
@@ -380,8 +487,8 @@ struct ReviewFeedView: View {
                 Task { await openReportSheet(for: item) }
             },
             onBlockTapped: {
-                if let sender = item.sender?.userId ?? item.senderId {
-                    pendingBlockUserId = sender
+                if let counterpartId = counterpartUserId(for: item, context: context) {
+                    pendingBlockUserId = counterpartId
                     showBlock = true
                 }
             }
@@ -391,57 +498,89 @@ struct ReviewFeedView: View {
     var body: some View {
         ScrollViewReader { proxy in
             VStack(spacing: 0) {
+                if showNavigationTitle {
+                    CriticDetailHeader(title: activeTabValue == 0 ? "Received" : "Posted") {
+                        dismiss()
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    .padding(.bottom, 8)
+                }
 
-                FlatTabBar2(selectedTab: $selectedTab, tabs: ["Received", "Posted"])
+                if showsTabBar {
+                    FlatTabBar2(selectedTab: activeTab, tabs: ["Received", "Posted"])
+                }
 
                 Group {
                     if vm.isLoading {
                         VStack(spacing: 12) {
                             ProgressView()
-                            Text("Loading…").foregroundColor(.secondary)
+                            Text("Loading…")
+                                .font(.critic(.body))
+                                .foregroundColor(CriticPalette.onSurfaceMuted)
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(Color(.systemGroupedBackground))
+                        .background(CriticPalette.background)
 
                     } else if let err = vm.errorText {
                         VStack(spacing: 10) {
-                            Text("Couldn’t load messages").font(.headline)
-                            Text(err).font(.caption).foregroundColor(.secondary)
+                            Text("Couldn’t load messages")
+                                .font(.critic(.pageTitle))
+                                .foregroundColor(CriticPalette.onSurface)
+                            Text(err)
+                                .font(.critic(.body))
+                                .foregroundColor(CriticPalette.onSurfaceMuted)
+                                .multilineTextAlignment(.center)
                             Button("Retry") { Task { await vm.load() } }
                                 .buttonStyle(.borderedProminent)
                         }
                         .padding()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(Color(.systemGroupedBackground))
+                        .background(CriticPalette.background)
 
                     } else {
                         let list: [PostItem] = currentList
-                        ScrollView {
-                            VStack(spacing: 14) {
-                                ForEach(list) { item in
-                                    if selectedTab == 0 {
-                                        rowView(for: item, in: .received)
-                                    } else {
-                                        let sched = scheduleState(for: item)
-                                        rowView(for: item, in: .posted(isFutureScheduled: (sched != nil), scheduledLabel: sched?.label))
-                                    }
-                                }
-                                Spacer(minLength: 8)
+                        if list.isEmpty {
+                            VStack(spacing: 10) {
+                                Text(emptyCountLabel)
+                                    .font(.critic(.pageTitle))
+                                    .foregroundColor(CriticPalette.onSurface)
+                                Text("New reviews will appear here.")
+                                    .font(.critic(.body))
+                                    .foregroundColor(CriticPalette.onSurfaceMuted)
                             }
-                            .frame(maxWidth: .infinity, alignment: .top)
-                            .padding(.top, 12)
-                            .padding(.horizontal, 16)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .background(CriticPalette.background)
+                        } else {
+                            ScrollView {
+                                VStack(spacing: 14) {
+                                    ForEach(list) { item in
+                                        if activeTabValue == 0 {
+                                            rowView(for: item, in: .received)
+                                        } else {
+                                            let sched = scheduleState(for: item)
+                                            rowView(for: item, in: .posted(isFutureScheduled: (sched != nil), scheduledLabel: sched?.label))
+                                        }
+                                    }
+                                    Spacer(minLength: 8)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .top)
+                                .padding(.top, 12)
+                                .padding(.horizontal, 16)
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                            .background(CriticPalette.background)
                         }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                        .background(Color(.systemGroupedBackground))
                     }
                 }
+                .padding(.top, embeddedTopSpacing)
             }
-            .navigationTitle(showNavigationTitle ? (selectedTab == 0 ? "Received" : "Posted") : "")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
+            .navigationBarHidden(true)
             .onAppear {
                 if UserDefaults.standard.string(forKey: "inboxStartTab") == "posted" {
-                    selectedTab = 1
+                    activeTab.wrappedValue = 1
                     UserDefaults.standard.removeObject(forKey: "inboxStartTab")
                 }
                 if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1",
@@ -450,13 +589,13 @@ struct ReviewFeedView: View {
                     Task { await vm.load() }
                 }
             }
-            .onChange(of: selectedTab) { newValue in
+            .onChange(of: activeTabValue) { newValue in
                 if newValue == 1, let first = vm.myPosts.first {
                     withAnimation { proxy.scrollTo(first.id, anchor: .top) }
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: .jumpToPosted)) { _ in
-                selectedTab = 1
+                activeTab.wrappedValue = 1
             }
             .background(
                 NavigationLink(
@@ -466,6 +605,8 @@ struct ReviewFeedView: View {
                 .opacity(0)
             )
         }
+        .background(CriticPalette.background.ignoresSafeArea())
+        .environment(\.colorScheme, .light)
 
         // Alerts
         .alert("Delete this post?", isPresented: $showDelete, presenting: pendingItem) { item in
@@ -534,19 +675,27 @@ struct ReviewFeedView: View {
         var body: some View {
             NavigationView {
                 VStack(spacing: 12) {
+                    CriticDetailHeader(title: "Report") {
+                        onDismiss()
+                    }
+
                     if reasonsLoading {
                         VStack(spacing: 10) {
                             ProgressView()
-                            Text("Loading reasons…").foregroundColor(.secondary)
+                            Text("Loading reasons…")
+                                .font(.critic(.body))
+                                .foregroundColor(CriticPalette.onSurfaceMuted)
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                     } else if let err = reportError {
                         VStack(spacing: 12) {
-                            Text("Report Status").font(.headline)
+                            Text("Report Status")
+                                .font(.critic(.pageTitle))
+                                .foregroundColor(CriticPalette.onSurface)
                             Text(err)
-                                .font(.body)
-                                .foregroundColor(.primary)
+                                .font(.critic(.body))
+                                .foregroundColor(CriticPalette.onSurface)
                                 .multilineTextAlignment(.center)
                                 .padding()
                             Button("Close") { onDismiss() }
@@ -556,12 +705,15 @@ struct ReviewFeedView: View {
 
                     } else {
                         VStack(spacing: 8) {
-                            Text("Report Post").font(.headline).padding(.top, 8)
+                            Text("Report Post")
+                                .font(.critic(.pageTitle))
+                                .foregroundColor(CriticPalette.onSurface)
+                                .padding(.top, 8)
 
                             if let item = pendingItem {
                                 Text(item.postcontent)
-                                    .font(.body)
-                                    .foregroundColor(.primary)
+                                    .font(.critic(.body))
+                                    .foregroundColor(CriticPalette.onSurface)
                                     .lineLimit(3)
                                     .padding(.horizontal)
                             }
@@ -575,60 +727,66 @@ struct ReviewFeedView: View {
                                             onSelectReason(r.id, r.text)
                                         } label: {
                                             HStack {
-                                                Text(r.text.capitalized).foregroundColor(.primary)
+                                                Text(r.text.capitalized)
+                                                    .font(.critic(.bodyStrong))
+                                                    .foregroundColor(CriticPalette.onSurface)
                                                 Spacer()
                                             }
                                             .padding()
                                             .frame(maxWidth: .infinity)
                                             .background(
                                                 RoundedRectangle(cornerRadius: 10)
-                                                    .fill(Color(.secondarySystemBackground))
+                                                    .fill(CriticPalette.surfaceVariant)
                                             )
                                         }
-                                    }
-
-                                    if selectedReasonId == "other" {
-                                        VStack(spacing: 8) {
-                                            if #available(iOS 16.0, *) {
-                                                TextField("Explain the issue…", text: $otherText, axis: .vertical)
-                                                    .lineLimit(3...6)
-                                                    .padding(10)
-                                                    .background(Color(.systemBackground))
-                                                    .cornerRadius(8)
-                                                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray.opacity(0.25)))
-                                            } else {
-                                                TextField("Explain the issue…", text: $otherText)
-                                                    .padding(10)
-                                                    .background(Color(.systemBackground))
-                                                    .cornerRadius(8)
-                                                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray.opacity(0.25)))
-                                            }
-
-                                            Button {
-                                                onSendOther()
-                                            } label: {
-                                                if sendInProgress {
-                                                    ProgressView().frame(maxWidth: .infinity)
-                                                } else {
-                                                    Text("Send").frame(maxWidth: .infinity)
-                                                }
-                                            }
-                                            .buttonStyle(.borderedProminent)
-                                            .disabled(otherText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || sendInProgress)
-                                        }
-                                        .padding(.top, 8)
+                                        .buttonStyle(.plain)
                                     }
                                 }
-                                .padding(.horizontal)
                             }
 
-                            Spacer()
+                            if selectedReasonId == "other" {
+                                VStack(spacing: 8) {
+                                    if #available(iOS 16.0, *) {
+                                        TextField("Explain the issue…", text: $otherText, axis: .vertical)
+                                            .lineLimit(3...6)
+                                            .font(.critic(.body))
+                                            .padding(10)
+                                            .background(CriticPalette.surface)
+                                            .cornerRadius(8)
+                                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray.opacity(0.25)))
+                                    } else {
+                                        TextField("Explain the issue…", text: $otherText)
+                                            .font(.critic(.body))
+                                            .padding(10)
+                                            .background(CriticPalette.surface)
+                                            .cornerRadius(8)
+                                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray.opacity(0.25)))
+                                    }
+
+                                    Button {
+                                        onSendOther()
+                                    } label: {
+                                        if sendInProgress {
+                                            ProgressView().frame(maxWidth: .infinity)
+                                        } else {
+                                            Text("Send").frame(maxWidth: .infinity)
+                                        }
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                    .disabled(otherText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || sendInProgress)
+                                }
+                                .padding(.top, 8)
+                            }
                         }
-                        .padding()
+                        .padding(.horizontal)
                     }
+
+                    Spacer()
                 }
-                .navigationBarTitle("Report", displayMode: .inline)
-                .navigationBarItems(leading: Button("Close") { onDismiss() })
+                .padding(16)
+                .background(CriticPalette.background.ignoresSafeArea())
+                .navigationBarBackButtonHidden(true)
+                .navigationBarHidden(true)
             }
         }
     }

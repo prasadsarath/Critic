@@ -168,6 +168,9 @@ final class ContactsViewModel: ObservableObject {
         let reg: [RegisteredContact] = decoded.registered.map {
             .init(id: $0.userId, name: $0.name, phoneE164: "")
         }
+        reg.forEach {
+            KnownUserDirectory.remember(userId: $0.id, displayName: $0.name, email: nil, profileUrl: nil)
+        }
 
         let unregSet = Set(decoded.unregistered)
         let inv: [LocalContact] = locals.compactMap { c in

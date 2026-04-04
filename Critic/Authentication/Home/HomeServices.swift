@@ -31,8 +31,10 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
         authorizationStatus = locationManager.authorizationStatus
         super.init()
         locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
-        locationManager.distanceFilter = 25
+        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        locationManager.distanceFilter = 1
+        locationManager.activityType = .fitness
+        locationManager.pausesLocationUpdatesAutomatically = false
         beginMonitoringIfAuthorized()
     }
 
@@ -115,7 +117,12 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let location = locations.last else { return }
+        let location =
+            locations
+                .filter { $0.horizontalAccuracy >= 0 }
+                .min(by: { $0.horizontalAccuracy < $1.horizontalAccuracy }) ??
+            locations.last
+        guard let location else { return }
         DispatchQueue.main.async {
             self.currentLocation = location
             UserDefaults.standard.set(location.coordinate.latitude, forKey: StorageKey.latitude)

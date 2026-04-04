@@ -130,33 +130,32 @@ struct UsersListView: View {
     let onOpenProfile: (UserLocation) -> Void
 
     var body: some View {
-        if allUsers.isEmpty {
-            VStack(spacing: 14) {
-                CriticSoftIcon(systemName: "person.3", color: Theme.info, size: 56, iconSize: 24)
-                Text("No nearby users yet")
-                    .font(.critic(.pageTitle))
-                    .foregroundColor(CriticPalette.onSurface)
-                Text("Pull to refresh or wait for the live socket to update.")
-                    .font(.critic(.body))
-                    .foregroundColor(CriticPalette.onSurfaceMuted)
-                    .multilineTextAlignment(.center)
-            }
-            .padding(24)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Theme.background)
-        } else {
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 12) {
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 12) {
+                if allUsers.isEmpty {
+                    VStack(spacing: 14) {
+                        CriticSoftIcon(systemName: "person.3", color: Theme.info, size: 56, iconSize: 24)
+                        Text("No nearby users yet")
+                            .font(.critic(.pageTitle))
+                            .foregroundColor(CriticPalette.onSurface)
+                        Text("Pull to refresh or wait for the live socket to update.")
+                            .font(.critic(.body))
+                            .foregroundColor(CriticPalette.onSurfaceMuted)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(24)
+                    .frame(maxWidth: .infinity, minHeight: 280)
+                } else {
                     ForEach(allUsers) { user in
-                        let displayName = DisplayNameResolver.resolve(displayName: user.displayName, userId: user.id)
-                        let distance = calculateDistance(from: centerUser, to: user)
+                        let displayName = resolvedUserDisplayName(user)
+                        let distance = resolvedDistanceMeters(from: centerUser, to: user)
                         let tagged = isTagged?(user) ?? false
 
                         VStack(alignment: .leading, spacing: 12) {
                             HStack(spacing: 12) {
                                 AvatarView(
                                     urlString: user.profileUrl,
-                                    seed: user.displayName ?? user.id,
+                                    seed: resolvedUserSeed(user),
                                     fallbackSystemName: user.profileImageName,
                                     size: 48,
                                     backgroundColor: Theme.surface,
@@ -213,12 +212,12 @@ struct UsersListView: View {
                         .criticCard()
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 2)
-                .padding(.bottom, 24)
             }
-            .background(Theme.background)
+            .padding(.horizontal, 16)
+            .padding(.top, 28)
+            .padding(.bottom, 24)
         }
+        .background(Theme.background)
     }
 }
 
@@ -257,12 +256,21 @@ struct RelativeUserMap: View {
         return min(max(seconds, minDur), maxDur)
     }
 
+    private func clearSelection() {
+        selectedUser = nil
+        selectedDistance = nil
+    }
+
     var body: some View {
         GeometryReader { geo in
             let center = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
 
             ZStack {
                 Theme.surface
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        clearSelection()
+                    }
 
                 ForEach([12.0, 7.0, 3.5], id: \.self) { ring in
                     Circle()
@@ -282,6 +290,9 @@ struct RelativeUserMap: View {
                     )
                     .shadow(color: Color(hex: 0x232B45, alpha: 0.08), radius: 14, x: 0, y: 6)
                     .position(center)
+                    .onTapGesture {
+                        clearSelection()
+                    }
 
                 ForEach(otherUsers) { user in
                     let rel = convertToXY(from: user)
@@ -289,14 +300,14 @@ struct RelativeUserMap: View {
                                                y: center.y + rel.y * scale - 8)
                     let prevPoint = lastScreenPoint[user.id] ?? currentPoint
                     let animDur = durationForMove(from: prevPoint, to: currentPoint)
-                    let d = calculateDistance(from: centerUser, to: user)
+                    let d = resolvedDistanceMeters(from: centerUser, to: user)
                     let isSelected = selectedUser == user
 
                     ZStack(alignment: .top) {
                         VStack(spacing: 6) {
                             AvatarView(
                                 urlString: user.profileUrl,
-                                seed: user.displayName ?? user.id,
+                                seed: resolvedUserSeed(user),
                                 fallbackSystemName: user.profileImageName,
                                 size: 40,
                                 backgroundColor: Theme.surface,
@@ -304,11 +315,11 @@ struct RelativeUserMap: View {
                             )
                             .overlay(Circle().stroke(isSelected ? Theme.tint : .clear, lineWidth: 2))
                             .onTapGesture {
-                                selectedUser = user
+                                selectedUser = KnownUserDirectory.hydrated(user)
                                 selectedDistance = d
                             }
 
-                            Text("\(DisplayNameResolver.resolve(displayName: user.displayName, userId: user.id)) · \(homeFormatMeters(d)) away")
+                            Text("\(resolvedUserDisplayName(user)) · \(homeFormatMeters(d)) away")
                                 .font(.critic(.caption))
                                 .foregroundColor(CriticPalette.onSurface)
                                 .lineLimit(1)
@@ -430,14 +441,14 @@ struct TaggedUsersView: View {
 
     private func lookup(_ id: String) -> UserLocation {
         allUsers.first(where: { $0.id == id }) ??
-        UserLocation(
+        KnownUserDirectory.hydrated(UserLocation(
             id: id,
             latitude: 0,
             longitude: 0,
             profileImageName: "person.circle.fill",
-            displayName: id,
+            displayName: nil,
             profileUrl: nil
-        )
+        ))
     }
 
     var body: some View {
@@ -460,13 +471,13 @@ struct TaggedUsersView: View {
                 VStack(spacing: 12) {
                     ForEach(tagged) { t in
                         let user = lookup(t.taggedUserId)
-                        let displayName = DisplayNameResolver.resolve(displayName: user.displayName, userId: user.id)
+                        let displayName = resolvedUserDisplayName(user)
 
                         VStack(alignment: .leading, spacing: 12) {
                             HStack(spacing: 12) {
                                 AvatarView(
                                     urlString: user.profileUrl,
-                                    seed: user.displayName ?? user.id,
+                                    seed: resolvedUserSeed(user),
                                     fallbackSystemName: user.profileImageName,
                                     size: 48,
                                     backgroundColor: Theme.surface,
@@ -521,7 +532,7 @@ struct TaggedUsersView: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 2)
+                .padding(.top, 28)
                 .padding(.bottom, 24)
             }
             .background(Theme.background)
@@ -646,63 +657,10 @@ private struct GlossyDockBar: View {
                     .padding(.horizontal, 4)
                     .background(
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .fill(
-                                isSelected
-                                    ? AnyShapeStyle(
-                                        LinearGradient(
-                                            colors: [
-                                                Color.white.opacity(0.92),
-                                                accent.opacity(0.12)
-                                            ],
-                                            startPoint: .top,
-                                            endPoint: .bottom
-                                        )
-                                    )
-                                    : AnyShapeStyle(Color.clear)
-                            )
+                            .fill(isSelected ? accent.opacity(0.12) : Color.clear)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                    .stroke(
-                                        isSelected
-                                            ? LinearGradient(
-                                                colors: [
-                                                    Color.white.opacity(0.92),
-                                                    accent.opacity(0.22)
-                                                ],
-                                                startPoint: .top,
-                                                endPoint: .bottom
-                                            )
-                                            : LinearGradient(
-                                                colors: [.clear, .clear],
-                                                startPoint: .top,
-                                                endPoint: .bottom
-                                            ),
-                                        lineWidth: 1
-                                    )
-                            )
-                            .overlay(alignment: .top) {
-                                if isSelected {
-                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                        .fill(
-                                            LinearGradient(
-                                                colors: [
-                                                    Color.white.opacity(0.72),
-                                                    Color.white.opacity(0.10)
-                                                ],
-                                                startPoint: .top,
-                                                endPoint: .bottom
-                                            )
-                                        )
-                                        .frame(height: 16)
-                                        .padding(.horizontal, 8)
-                                        .padding(.top, 1)
-                                }
-                            }
-                            .shadow(
-                                color: isSelected ? accent.opacity(0.18) : .clear,
-                                radius: 14,
-                                x: 0,
-                                y: 8
+                                    .stroke(isSelected ? accent.opacity(0.18) : .clear, lineWidth: 1)
                             )
                     )
                 }
@@ -713,33 +671,15 @@ private struct GlossyDockBar: View {
         .padding(.top, 10)
         .padding(.bottom, 12)
         .background(
-            ZStack {
-                RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .fill(.ultraThinMaterial)
-
-                RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.56),
-                                Color.white.opacity(0.16),
-                                Color.white.opacity(0.06)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-
-                RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .stroke(Color.white.opacity(0.72), lineWidth: 1)
-
-                RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .stroke(CriticPalette.outline.opacity(0.38), lineWidth: 1)
-            }
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .fill(CriticPalette.surface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 30, style: .continuous)
+                        .stroke(CriticPalette.outline, lineWidth: 1)
+                )
         )
         .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
-        .shadow(color: Color(hex: 0x111827, alpha: 0.09), radius: 26, x: 0, y: 14)
-        .shadow(color: Color.white.opacity(0.55), radius: 14, x: 0, y: -2)
+        .shadow(color: Color(hex: 0x111827, alpha: 0.05), radius: 16, x: 0, y: 8)
         .padding(.horizontal, 14)
         .padding(.bottom, 10)
     }
@@ -768,23 +708,22 @@ private struct PremiumHomeHeaderBar: View {
                     backgroundColor: CriticPalette.surface,
                     tintColor: CriticPalette.primary
                 )
-                .shadow(color: Color(hex: 0x151A2D, alpha: 0.04), radius: 8, x: 0, y: 3)
 
-                VStack(alignment: .leading, spacing: 1) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(.custom("Manrope-Bold", size: 15.5))
+                        .font(.critic(.listTitle))
                         .foregroundColor(CriticPalette.onSurface)
                         .lineLimit(1)
 
                     Text(addressLabel)
-                        .font(.custom("Manrope-Medium", size: 11.5))
+                        .font(.critic(.caption))
                         .foregroundColor(CriticPalette.onSurfaceMuted)
                         .lineLimit(1)
                 }
 
                 Spacer(minLength: 0)
             }
-            .frame(width: min(UIScreen.main.bounds.width - 104, 300), alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.leading, 2)
             .padding(.vertical, 2)
         }
@@ -794,6 +733,7 @@ private struct PremiumHomeHeaderBar: View {
 
 private struct PremiumHeaderRefreshButton: View {
     let action: () -> Void
+    var isRefreshing: Bool = false
 
     var body: some View {
         Button(action: action) {
@@ -801,6 +741,8 @@ private struct PremiumHeaderRefreshButton: View {
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(CriticPalette.primary)
                 .frame(width: 30, height: 30)
+                .rotationEffect(.degrees(isRefreshing ? 180 : 0))
+                .animation(.easeInOut(duration: 0.35), value: isRefreshing)
                 .background(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .fill(CriticPalette.primarySoft)
@@ -811,6 +753,7 @@ private struct PremiumHeaderRefreshButton: View {
                 )
         }
         .buttonStyle(.plain)
+        .contentShape(Rectangle())
         .accessibilityLabel("Refresh nearby users")
     }
 }
@@ -830,11 +773,13 @@ struct HomeView: View {
     private let uiUpdateDebounce: TimeInterval = 1.5
 
     // keep sim ticking
-    private let tick = Timer.publish(every: 10, on: .main, in: .common).autoconnect()
+    private let tick = Timer.publish(every: 3, on: .main, in: .common).autoconnect()
 
     @State private var selectedUser: UserLocation?
     @State private var selectedDistance: Double?
+    @State private var isRefreshAnimating = false
     @State private var selectedTab: HomeTab = .home
+    @State private var postsFeedTab: Int = 0
 
     // Live inbox count
     @StateObject private var inboxVM = InboxCountViewModel()
@@ -845,12 +790,18 @@ struct HomeView: View {
 
     // Reactive user name shown in top bar
     @AppStorage("userName") private var storedUserName: String = ""
+    @AppStorage("userEmail") private var storedUserEmail: String = ""
+    @AppStorage("userProfileUrl") private var storedUserProfileURL: String = ""
     private var displayName: String {
         DisplayNameResolver.homeHeaderName(
             storedName: storedUserName,
             userId: UserDefaults.standard.string(forKey: "userId"),
-            email: UserDefaults.standard.string(forKey: "userEmail")
+            email: storedUserEmail
         )
+    }
+    private var currentProfileURL: String? {
+        let trimmed = storedUserProfileURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
     private var headerTitle: String {
         let trimmed = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -866,6 +817,7 @@ struct HomeView: View {
     // View/app lifecycle
     @Environment(\.scenePhase) private var scenePhase
     @State private var isHomeActive: Bool = false
+    @State private var isSocketConnectPending: Bool = false
     @State private var lastNearbySyncAt: Date = .distantPast
     @State private var lastNearbySyncCoordinate: CLLocationCoordinate2D?
     @State private var pendingNearbyRefresh: PendingNearbyRefresh?
@@ -880,8 +832,8 @@ struct HomeView: View {
         let reason: String
     }
 
-    private let nearbyRefreshCooldown: TimeInterval = 3
-    private let nearbyRefreshDistanceThreshold: CLLocationDistance = 20
+    private let nearbyRefreshCooldown: TimeInterval = 1
+    private let nearbyRefreshDistanceThreshold: CLLocationDistance = 1
 
     init() {
         let appearance = UITabBarAppearance()
@@ -932,7 +884,8 @@ struct HomeView: View {
                 longitude: coord.longitude,
                 profileImageName: "person.fill",
                 displayName: "You",
-                profileUrl: UserDefaults.standard.string(forKey: "userProfileUrl")  // if you store it
+                email: storedUserEmail,
+                profileUrl: currentProfileURL
             )
         } else if let first = userLocations.first {
             return UserLocation(
@@ -941,7 +894,8 @@ struct HomeView: View {
                 longitude: first.longitude,
                 profileImageName: "person.fill",
                 displayName: "You",
-                profileUrl: UserDefaults.standard.string(forKey: "userProfileUrl")
+                email: storedUserEmail,
+                profileUrl: currentProfileURL
             )
         } else {
             return UserLocation(
@@ -950,14 +904,15 @@ struct HomeView: View {
                 longitude: 0,
                 profileImageName: "person.fill",
                 displayName: "You",
-                profileUrl: UserDefaults.standard.string(forKey: "userProfileUrl")
+                email: storedUserEmail,
+                profileUrl: currentProfileURL
             )
         }
     }
 
     private var allUsers: [UserLocation] { userLocations }
     private var nearbyUsers: [UserLocation] {
-        allUsers.filter { calculateDistance(from: centerUser, to: $0) <= 5_000 }
+        allUsers.filter { resolvedDistanceMeters(from: centerUser, to: $0) <= 5_000 }
     }
     private var activeUsers: [UserLocation] {
         nearbyUsers.isEmpty ? allUsers : nearbyUsers
@@ -998,13 +953,27 @@ struct HomeView: View {
         return nil
     }
 
+    private func hydrateUser(_ user: UserLocation) -> UserLocation {
+        KnownUserDirectory.hydrated(user)
+    }
+
+    private func resolvedDistance(for user: UserLocation) -> Double {
+        resolvedDistanceMeters(from: centerUser, to: hydrateUser(user))
+    }
+
     // MARK: - Open profile (centralized)
     private func openProfile(for user: UserLocation) {
-        if navigationManager.showProfile, profileDestUser == user { return }
-        profileDestUser = user
-        NavigationManager.shared.selectedUser = user
+        let hydratedUser = hydrateUser(user)
+        if navigationManager.showProfile, profileDestUser == hydratedUser { return }
+        profileDestUser = hydratedUser
+        NavigationManager.shared.selectedUser = hydratedUser
+        NavigationManager.shared.selectedDistance = resolvedDistance(for: hydratedUser)
         NavigationManager.shared.showProfile = true
-        print("[Nav] Open profile for \(user.id)")
+        print(
+            "[Nav] Open profile userId=\(hydratedUser.id) " +
+            "name=\(hydratedUser.displayName ?? "nil") " +
+            "email=\(hydratedUser.email ?? "nil")"
+        )
     }
 
     // MARK: - WebSocket orchestration
@@ -1017,17 +986,41 @@ struct HomeView: View {
             print("[WS] connect skipped: missing auth state")
             return
         }
+        guard !isSocketConnectPending else {
+            return
+        }
         if socket.state.isConnected || socket.state == .connecting {
             return
         }
-        print("[WS] Connecting for userId=\(uid)")
-        socket.connect()
+        isSocketConnectPending = true
+        Task {
+            do {
+                let idToken = try await OIDCAuthManager.shared.getIDToken()
+                await MainActor.run {
+                    self.isSocketConnectPending = false
+                    guard self.isHomeActive else { return }
+                    guard self.currentUserId() == uid else { return }
+                    guard OIDCAuthManager.shared.hasAuthState else { return }
+                    if self.socket.state.isConnected || self.socket.state == .connecting {
+                        return
+                    }
+                    print("[WS] Connecting for userId=\(uid)")
+                    self.socket.connect(headers: ["Authorization": "Bearer \(idToken)"])
+                }
+            } catch {
+                await MainActor.run {
+                    self.isSocketConnectPending = false
+                    print("[WS] connect skipped: missing id token (\(error.localizedDescription))")
+                }
+            }
+        }
     }
 
     private func disconnectSocket(reason: String) {
         if socket.state.isConnected || socket.state == .connecting {
             print("[WS] Disconnecting (\(reason))")
         }
+        isSocketConnectPending = false
         pendingNearbyRefresh = nil
         socket.disconnect()
         userLocations = []
@@ -1040,22 +1033,93 @@ struct HomeView: View {
     }
 
     private var statusStrip: some View {
-        HStack(spacing: 12) {
-            CriticPill(
-                icon: "circle.fill",
-                label: statusText,
-                iconColor: socket.state == .connected ? Theme.success : socket.state == .connecting ? Theme.warning : Theme.subtleText
-            )
-            CriticPill(
-                icon: "person.2",
-                label: "\(activeUsers.count) people in range",
-                iconColor: Theme.tint
-            )
+        Group {
+            if #available(iOS 16.0, *) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 12) {
+                        statusConnectionPill
+                        statusNearbyPill
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        statusConnectionPill
+                        statusNearbyPill
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
+                }
+            } else {
+                HStack(spacing: 12) {
+                    statusConnectionPill
+                    statusNearbyPill
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .center)
-        .padding(.horizontal, 20)
+        .padding(.horizontal, 16)
         .padding(.top, 8)
-        .padding(.bottom, 8)
+        .padding(.bottom, 10)
+        .background(Theme.background)
+    }
+
+    private var statusConnectionPill: some View {
+        CriticPill(
+            icon: "circle.fill",
+            label: statusText,
+            iconColor: socket.state == .connected ? Theme.success : socket.state == .connecting ? Theme.warning : Theme.subtleText
+        )
+    }
+
+    private var statusNearbyPill: some View {
+        CriticPill(
+            icon: "person.2",
+            label: "\(activeUsers.count) people in range",
+            iconColor: Theme.tint
+        )
+    }
+
+    private var topBar: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                PremiumHomeHeaderBar(
+                    title: headerTitle,
+                    address: locationManager.currentAddress,
+                    avatarURLString: currentProfileURL,
+                    avatarSeed: UserDefaults.standard.string(forKey: "userId") ?? displayName
+                ) {
+                    let selfUser = UserLocation(
+                        id: UserDefaults.standard.string(forKey: "userId") ?? "me",
+                        latitude: centerUser.latitude,
+                        longitude: centerUser.longitude,
+                        profileImageName: "person.circle.fill",
+                        displayName: displayName,
+                        profileUrl: currentProfileURL
+                    )
+                    openProfile(for: selfUser)
+                }
+
+                if selectedTab == .home || selectedTab == .list {
+                    PremiumHeaderRefreshButton(
+                        action: {
+                            refreshNearbyUsers()
+                        },
+                        isRefreshing: isRefreshAnimating
+                    )
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, selectedTab == .posts ? 2 : 6)
+
+            if isLocationDrivenTab {
+                statusStrip
+            }
+
+            if selectedTab == .posts {
+                FlatTabBar2(selectedTab: $postsFeedTab, tabs: ["Received", "Posted"])
+                    .padding(.bottom, 4)
+            }
+        }
         .background(Theme.background)
     }
 
@@ -1064,9 +1128,12 @@ struct HomeView: View {
             ZStack {
                 Theme.background.ignoresSafeArea()
 
-                TabView(selection: $selectedTab) {
-                    VStack(spacing: 0) {
-                        statusStrip
+                VStack(spacing: 0) {
+                    if !navigationManager.showProfile && !navigationManager.showWritePost {
+                        topBar
+                    }
+
+                    TabView(selection: $selectedTab) {
                         RelativeUserMap(
                             centerUser: centerUser,
                             otherUsers: activeUsers,
@@ -1076,15 +1143,12 @@ struct HomeView: View {
                             selectedDistance: $selectedDistance
                         )
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    }
-                    .background(Theme.background)
-                    .tag(HomeTab.home)
-                    .tabItem {
-                        tabLabel(for: .home)
-                    }
+                        .background(Theme.background)
+                        .tag(HomeTab.home)
+                        .tabItem {
+                            tabLabel(for: .home)
+                        }
 
-                    VStack(spacing: 0) {
-                        statusStrip
                         UsersListView(
                             centerUser: centerUser,
                             allUsers: activeUsers,
@@ -1094,67 +1158,69 @@ struct HomeView: View {
                             onOpenProfile: { user in openProfile(for: user) }
                         )
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .padding(.top, 4)
-                    }
-                    .background(Theme.background)
-                    .tag(HomeTab.list)
-                    .tabItem {
-                        tabLabel(for: .list)
-                    }
-
-                    ReviewFeedView(showNavigationTitle: false)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .padding(.top, 4)
-                        .background(Color(.systemGroupedBackground))
-                        .tag(HomeTab.posts)
+                        .background(Theme.background)
+                        .tag(HomeTab.list)
                         .tabItem {
-                            tabLabel(for: .posts)
+                            tabLabel(for: .list)
                         }
-                        .badge(inboxVM.count == 0 ? nil : String(inboxVM.count))
 
-                    TaggedUsersView(
-                        tagged: tagVM.tagged,
-                        allUsers: allUsers,
-                        onWrite: { attemptWrite(user: $0) },
-                        onUntag: { user in handleTagToggle(for: user) },
-                        onOpenProfile: { user in openProfile(for: user) }
-                    )
-                    .padding(.top, 4)
-                    .background(Theme.background)
-                    .tag(HomeTab.tagged)
-                    .tabItem {
-                        tabLabel(for: .tagged)
-                    }
-                    .onAppear {
-                        guard let uid = currentUserId() else { return }
-                        Task { await tagVM.refresh(for: uid) }
-                    }
-                    .refreshable {
-                        guard let uid = currentUserId() else { return }
-                        await tagVM.refresh(for: uid)
-                    }
+                        ReviewFeedView(tabSelection: $postsFeedTab, showNavigationTitle: false, showsTabBar: false)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .background(CriticPalette.background)
+                            .tag(HomeTab.posts)
+                            .tabItem {
+                                tabLabel(for: .posts)
+                            }
+                            .badge(inboxVM.count == 0 ? nil : String(inboxVM.count))
 
-                    ContactsView(vm: contactsVM) { userId, displayName in
-                        let u = UserLocation(
-                            id: userId,
-                            latitude: centerUser.latitude,
-                            longitude: centerUser.longitude,
-                            profileImageName: "person.circle.fill",
-                            displayName: DisplayNameResolver.resolve(displayName: displayName, userId: userId),
-                            profileUrl: nil
+                        TaggedUsersView(
+                            tagged: tagVM.tagged,
+                            allUsers: allUsers,
+                            onWrite: { attemptWrite(user: $0) },
+                            onUntag: { user in handleTagToggle(for: user) },
+                            onOpenProfile: { user in openProfile(for: user) }
                         )
-                        attemptWrite(user: u)
+                        .background(Theme.background)
+                        .tag(HomeTab.tagged)
+                        .tabItem {
+                            tabLabel(for: .tagged)
+                        }
+                        .onAppear {
+                            guard let uid = currentUserId() else { return }
+                            Task { await tagVM.refresh(for: uid) }
+                        }
+                        .refreshable {
+                            guard let uid = currentUserId() else { return }
+                            await tagVM.refresh(for: uid)
+                        }
+
+                        ContactsView(vm: contactsVM) { userId, displayName in
+                            KnownUserDirectory.remember(userId: userId, displayName: displayName, email: nil, phone: nil, profileUrl: nil)
+                            let u = UserLocation(
+                                id: userId,
+                                latitude: centerUser.latitude,
+                                longitude: centerUser.longitude,
+                                profileImageName: "person.circle.fill",
+                                displayName: DisplayNameResolver.resolve(
+                                    displayName: displayName ?? KnownUserDirectory.name(for: userId),
+                                    email: KnownUserDirectory.email(for: userId),
+                                    phone: KnownUserDirectory.phone(for: userId),
+                                    userId: userId
+                                ),
+                                profileUrl: nil
+                            )
+                            attemptWrite(user: u)
+                        }
+                        .background(Theme.background)
+                        .tag(HomeTab.contacts)
+                        .tabItem {
+                            tabLabel(for: .contacts)
+                        }
                     }
-                    .padding(.top, 4)
-                    .background(Theme.background)
-                    .tag(HomeTab.contacts)
-                    .tabItem {
-                        tabLabel(for: .contacts)
-                    }
-                }
-                .safeAreaInset(edge: .bottom, spacing: 0) {
-                    if !navigationManager.showProfile && !navigationManager.showWritePost {
-                        GlossyDockBar(selectedTab: $selectedTab, postsBadgeCount: inboxVM.count)
+                    .safeAreaInset(edge: .bottom, spacing: 0) {
+                        if !navigationManager.showProfile && !navigationManager.showWritePost {
+                            GlossyDockBar(selectedTab: $selectedTab, postsBadgeCount: inboxVM.count)
+                        }
                     }
                 }
 
@@ -1171,42 +1237,11 @@ struct HomeView: View {
                     isActive: $navigationManager.showWritePost
                 ) { EmptyView() }
             }
-            .navigationBarTitleDisplayMode(.inline)
-            .criticNavigationBarBackground(Theme.background)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    PremiumHomeHeaderBar(
-                        title: headerTitle,
-                        address: locationManager.currentAddress,
-                        avatarURLString: UserDefaults.standard.string(forKey: "userProfileUrl"),
-                        avatarSeed: UserDefaults.standard.string(forKey: "userId") ?? displayName
-                    ) {
-                            let selfUser = UserLocation(
-                                id: UserDefaults.standard.string(forKey: "userId") ?? "me",
-                                latitude: centerUser.latitude,
-                                longitude: centerUser.longitude,
-                                profileImageName: "person.circle.fill",
-                                displayName: displayName,
-                                profileUrl: UserDefaults.standard.string(forKey: "userProfileUrl")
-                            )
-                            openProfile(for: selfUser)
-                    }
-                    .padding(.top, 4)
-                }
+                .navigationBarHidden(true)
+                .task { await meVM.loadIfNeeded() }
 
-                ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    if selectedTab == .home || selectedTab == .list {
-                        PremiumHeaderRefreshButton {
-                            refreshNearbyUsers()
-                        }
-                        .padding(.top, 4)
-                    }
-                }
-            }
-            .task { await meVM.loadIfNeeded() }
-
-            .onAppear {
-                isHomeActive = true
+                .onAppear {
+                    isHomeActive = true
 
                 if storedUserName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                    let name = UserDefaults.standard.string(forKey: "userName"), !name.isEmpty {
@@ -1225,6 +1260,8 @@ struct HomeView: View {
                 connectSocketIfReady()
                 syncLocationMonitoring(for: selectedTab)
                 pushAndFetchNearby(force: true, reason: "home appear")
+                Task { await contactsVM.bootstrap() }
+                KnownUserDirectory.rememberCurrentUserFromDefaults()
 
                 if let uid = currentUserId() {
                     inboxVM.start(userId: uid, every: 15)
@@ -1247,18 +1284,57 @@ struct HomeView: View {
                     nearbyCancellable = socket.$nearbyUsers
                         .debounce(for: .seconds(uiUpdateDebounce), scheduler: RunLoop.main)
                         .sink { users in
-                            // 👇 grab profile url safely from whatever struct you have
-                            self.userLocations = users.map { item in
-                                let avatar = extractProfileURL(from: item)
+                            KnownUserDirectory.rememberCurrentUserFromDefaults()
+
+                            let mappedUsers = users.map { item -> UserLocation in
+                                let avatar = extractProfileURL(from: item) ?? KnownUserDirectory.profileUrl(for: item.userId)
+                                let cachedEmail = item.email ?? KnownUserDirectory.email(for: item.userId)
+                                let cachedPhone = item.phone ?? KnownUserDirectory.phone(for: item.userId)
+                                KnownUserDirectory.remember(
+                                    userId: item.userId,
+                                    displayName: item.name,
+                                    email: cachedEmail,
+                                    phone: cachedPhone,
+                                    profileUrl: avatar
+                                )
+
                                 return UserLocation(
                                     id: item.userId,
                                     latitude: item.lat,
                                     longitude: item.lon,
                                     profileImageName: "person.circle.fill",
-                                    displayName: item.name ?? item.email ?? item.userId,
-                                    profileUrl: avatar
+                                    displayName: DisplayNameResolver.resolve(
+                                        displayName: item.name ?? KnownUserDirectory.name(for: item.userId),
+                                        email: cachedEmail,
+                                        phone: cachedPhone,
+                                        userId: item.userId
+                                    ),
+                                    email: cachedEmail,
+                                    phone: cachedPhone,
+                                    profileUrl: avatar,
+                                    distanceMeters: item.distanceM,
+                                    isSimulated: item.isSimulated
                                 )
                             }
+                            self.userLocations = mappedUsers
+
+                            if let currentSelection = self.selectedUser,
+                               let refreshed = mappedUsers.first(where: { $0.id == currentSelection.id }) {
+                                let hydrated = self.hydrateUser(refreshed)
+                                self.selectedUser = hydrated
+                                self.selectedDistance = self.resolvedDistance(for: hydrated)
+                            }
+
+                            if let navSelection = NavigationManager.shared.selectedUser,
+                               let refreshed = mappedUsers.first(where: { $0.id == navSelection.id }) {
+                                let hydrated = self.hydrateUser(refreshed)
+                                NavigationManager.shared.selectedUser = hydrated
+                                NavigationManager.shared.selectedDistance = self.resolvedDistance(for: hydrated)
+                                if self.profileDestUser?.id == hydrated.id {
+                                    self.profileDestUser = hydrated
+                                }
+                            }
+
                             if !didShowReadyOnce {
                                 didShowReadyOnce = true
                                 bootPhase = .ready
@@ -1365,15 +1441,16 @@ struct HomeView: View {
                         message: Text("Only \(nearbyUsers.count) users are nearby. You may be easier to trace. This is a disclaimer — you can continue to write and post."),
                         primaryButton: .cancel(Text("Cancel"), action: { activeAlert = nil }),
                         secondaryButton: .default(Text("Continue"), action: {
-                            NavigationManager.shared.selectedUser = user
-                            NavigationManager.shared.selectedDistance = calculateDistance(from: centerUser, to: user)
+                            let hydrated = hydrateUser(user)
+                            NavigationManager.shared.selectedUser = hydrated
+                            NavigationManager.shared.selectedDistance = resolvedDistance(for: hydrated)
                             NavigationManager.shared.showWritePost = true
                             activeAlert = nil
                         })
                     )
                 case .tagConfirm(let user):
                     return Alert(
-                        title: Text("Tag \(DisplayNameResolver.resolve(displayName: user.displayName, userId: user.id))?"),
+                        title: Text("Tag \(resolvedUserDisplayName(user))?"),
                         message: Text("You’re tagging this user. You can post your review in the next 24 hours."),
                         primaryButton: .cancel(Text("Cancel"), action: { activeAlert = nil }),
                         secondaryButton: .default(Text("Proceed"), action: {
@@ -1382,7 +1459,7 @@ struct HomeView: View {
                     )
                 case .untagConfirm(let user):
                     return Alert(
-                        title: Text("Untag \(DisplayNameResolver.resolve(displayName: user.displayName, userId: user.id))?"),
+                        title: Text("Untag \(resolvedUserDisplayName(user))?"),
                         message: Text("Are you sure you want to untag this user?"),
                         primaryButton: .cancel(Text("Cancel"), action: { activeAlert = nil }),
                         secondaryButton: .destructive(Text("Untag"), action: {
@@ -1408,21 +1485,30 @@ struct HomeView: View {
     @StateObject private var contactsVM = ContactsViewModel()
 
     private func attemptWrite(user: UserLocation) {
+        let hydrated = hydrateUser(user)
         let contactsUsingApp = contactsVM.registered.count
 
         if contactsUsingApp > 0 && contactsUsingApp < 5 {
-            activeAlert = AlertPayload(type: .trace(user)); return
+            activeAlert = AlertPayload(type: .trace(hydrated)); return
         }
         if contactsUsingApp == 0 && nearbyUsers.count < 11 {
-            activeAlert = AlertPayload(type: .trace(user)); return
+            activeAlert = AlertPayload(type: .trace(hydrated)); return
         }
 
-        NavigationManager.shared.selectedUser = user
-        NavigationManager.shared.selectedDistance = calculateDistance(from: centerUser, to: user)
+        NavigationManager.shared.selectedUser = hydrated
+        NavigationManager.shared.selectedDistance = resolvedDistance(for: hydrated)
         NavigationManager.shared.showWritePost = true
     }
 
     private func refreshNearbyUsers() {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            isRefreshAnimating = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isRefreshAnimating = false
+            }
+        }
         locationManager.requestAccessIfNeeded()
         pushAndFetchNearby(force: true, reason: "manual refresh")
     }
@@ -1477,12 +1563,30 @@ struct HomeView: View {
 
         let lat = coord.latitude
         let lon = coord.longitude
+        let currentName = UserDefaults.standard.string(forKey: "userName")
+        let currentEmail = UserDefaults.standard.string(forKey: "userEmail")
+        let currentProfileURL = UserDefaults.standard.string(forKey: "userProfileUrl")
         print("[WS] Location updated and nearby refresh sent (\(reason)) lat=\(lat) lon=\(lon)")
-        
-        socket.sendUpdateLocation(userId: uid, latitude: lat, longitude: lon)
-        
+
+        socket.sendUpdateLocation(
+            userId: uid,
+            latitude: lat,
+            longitude: lon,
+            displayName: currentName,
+            email: currentEmail,
+            profileUrl: currentProfileURL
+        )
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            self.socket.sendGetNearbyUsers(userId: uid, latitude: lat, longitude: lon, radiusMeters: 15)
+            self.socket.sendGetNearbyUsers(
+                userId: uid,
+                latitude: lat,
+                longitude: lon,
+                radiusMeters: 15,
+                displayName: currentName,
+                email: currentEmail,
+                profileUrl: currentProfileURL
+            )
         }
     }
 

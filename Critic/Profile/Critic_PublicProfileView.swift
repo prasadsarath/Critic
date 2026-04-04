@@ -6,26 +6,37 @@ struct PublicProfileView: View {
 
     // Use the distance already computed by HomeView (if available)
     private var selectedDistance: Double? {
-        NavigationManager.shared.selectedDistance
+        liveDistanceMeters(to: hydratedUser, fallback: NavigationManager.shared.selectedDistance)
+    }
+
+    private var hydratedUser: UserLocation {
+        KnownUserDirectory.hydrated(user)
     }
 
     var body: some View {
         VStack(spacing: 20) {
             Spacer().frame(height: 24)
 
-            Image(systemName: user.profileImageName)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 96, height: 96)
-                .foregroundColor(.blue)
-                .background(Circle().fill(Color(.secondarySystemBackground)))
-                .clipShape(Circle())
+            AvatarView(
+                urlString: hydratedUser.profileUrl,
+                seed: resolvedUserSeed(hydratedUser),
+                fallbackSystemName: hydratedUser.profileImageName,
+                size: 96,
+                backgroundColor: Color(.secondarySystemBackground),
+                tintColor: CriticPalette.primary
+            )
 
-            Text(user.displayName ?? user.id)
+            Text(resolvedUserDisplayName(hydratedUser))
                 .font(.system(size: 24, weight: .semibold, design: .rounded))
 
             if let d = selectedDistance {
                 Text("\(formatMetersLocal(d)) away")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+
+            if let email = DisplayNameResolver.normalizedEmail(hydratedUser.email) {
+                Text(email)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
@@ -46,4 +57,3 @@ private func formatMetersLocal(_ meters: Double) -> String {
     if meters >= 1000 { return String(format: "%.1f km", meters / 1000) }
     return String(format: "%.0f m", meters)
 }
-

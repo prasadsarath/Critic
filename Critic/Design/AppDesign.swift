@@ -42,6 +42,7 @@ enum CriticRadius {
 enum CriticTextRole {
     case display
     case pageTitle
+    case listTitle
     case sectionHeader
     case cardTitle
     case body
@@ -58,6 +59,8 @@ enum CriticTypography {
             return .custom("Manrope-Bold", size: 26, relativeTo: .largeTitle)
         case .pageTitle:
             return .custom("Manrope-Bold", size: 20, relativeTo: .title2)
+        case .listTitle:
+            return .custom("Manrope-SemiBold", size: 17, relativeTo: .headline)
         case .sectionHeader:
             return .custom("Manrope-Bold", size: 15, relativeTo: .headline)
         case .cardTitle:
@@ -103,7 +106,10 @@ struct CriticCardModifier: ViewModifier {
             .background(
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
                     .fill(fill)
-                    .shadow(color: Color(hex: 0x151A2D, alpha: 0.04), radius: 16, x: 0, y: 6)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: radius, style: .continuous)
+                            .stroke(CriticPalette.outline.opacity(0.92), lineWidth: 1)
+                    )
             )
     }
 }
@@ -211,5 +217,44 @@ struct CriticPill: View {
                 .fill(fill)
                 .overlay(Capsule(style: .continuous).stroke(CriticPalette.outline, lineWidth: 1))
         )
+    }
+}
+
+struct CriticCircularBackButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "chevron.left")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(CriticPalette.onSurface)
+                .frame(width: 44, height: 44)
+                .background(
+                    Circle()
+                        .fill(CriticPalette.surface)
+                        .overlay(Circle().stroke(CriticPalette.outline, lineWidth: 1))
+                )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+struct CriticDetailHeader: View {
+    let title: String
+    let onBack: () -> Void
+
+    var body: some View {
+        HStack {
+            CriticCircularBackButton(action: onBack)
+            Spacer()
+            Text(title)
+                .font(.critic(.display))
+                .foregroundColor(CriticPalette.onSurface)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            Spacer()
+            Color.clear.frame(width: 44, height: 44)
+        }
+        .padding(.top, 4)
     }
 }

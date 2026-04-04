@@ -17,6 +17,7 @@ final class OIDCAuthManager: NSObject, ObservableObject {
 
     private(set) var authState: OIDAuthState?
     var currentAuthorizationFlow: OIDExternalUserAgentSession?
+    private var isStartingAuthorization = false
 
     // MARK: - Your pool / Hosted UI details
 
@@ -26,12 +27,13 @@ final class OIDCAuthManager: NSObject, ObservableObject {
     private let redirectURI = AppEndpoints.Auth.redirectURI
     private let logoutRedirectURI = AppEndpoints.Auth.logoutRedirectURI
     private let cognitoUserAdminScope = "aws.cognito.signin.user.admin"
+    private let requestsAdminScopeAtLogin = false
 
     /// Treat “any saved state” as restorable; access token might be expired but the refresh token is still valid.
     var hasAuthState: Bool { authState != nil }
 
     /// Public read-only: is a Hosted UI flow currently presented?
-    var isSigningIn: Bool { currentAuthorizationFlow != nil }
+    var isSigningIn: Bool { currentAuthorizationFlow != nil || isStartingAuthorization }
 
     override init() {
         super.init()
@@ -80,18 +82,12 @@ final class OIDCAuthManager: NSObject, ObservableObject {
 
         let callback: (OIDAuthState?, Error?) -> Void = { [weak self] state, error in
             guard let self else { return }
+            self.isStartingAuthorization = false
             self.currentAuthorizationFlow = nil
 
             if state == nil, includeAdminScope, self.isInvalidScopeError(error) {
-                print("[Auth] \(self.cognitoUserAdminScope) is not enabled on the app client. Retrying without it.")
-                self.beginAuthorization(
-                    configuration: configuration,
-                    presentingViewController: presentingViewController,
-                    prefersEphemeral: prefersEphemeral,
-                    extraParams: extraParams,
-                    includePhoneScope: includePhoneScope,
-                    includeAdminScope: false
-                )
+                print("[Auth] \(self.cognitoUserAdminScope) is not enabled on the app client. Skipping silent retry to avoid duplicate Hosted UI prompts.")
+                NotificationCenter.default.post(name: .loginFailed, object: error)
                 return
             }
 
@@ -114,17 +110,20 @@ final class OIDCAuthManager: NSObject, ObservableObject {
                 callback: callback
             )
         }
+        isStartingAuthorization = false
     }
 
     // MARK: - Sign In (Hosted UI - shows Cognito form + Google button)
     func signIn(presentingViewController: UIViewController) {
         guard !isSigningIn else { return }
+        isStartingAuthorization = true
 
         let forceFreshLogin = UserDefaults.standard.bool(forKey: "justLoggedOut")
         print("[Auth] signIn invoked. forceFreshLogin=\(forceFreshLogin)")
 
         OIDAuthorizationService.discoverConfiguration(forIssuer: issuer) { configuration, error in
             guard let configuration else {
+                self.isStartingAuthorization = false
                 print("‼️ Discovery error: \(error?.localizedDescription ?? "unknown")")
                 NotificationCenter.default.post(name: .loginFailed, object: error)
                 return
@@ -142,7 +141,7 @@ final class OIDCAuthManager: NSObject, ObservableObject {
                 prefersEphemeral: prefersEphemeral,
                 extraParams: extraParams,
                 includePhoneScope: true,
-                includeAdminScope: true
+                includeAdminScope: self.requestsAdminScopeAtLogin
             )
             if forceFreshLogin {
                 UserDefaults.standard.set(false, forKey: "justLoggedOut")
@@ -153,12 +152,14 @@ final class OIDCAuthManager: NSObject, ObservableObject {
     // MARK: - Optional: Google-only fast path (use ONLY if Google IdP exists)
     func signInWithGoogle(presentingViewController: UIViewController) {
         guard !isSigningIn else { return }
+        isStartingAuthorization = true
 
         let forceFreshLogin = UserDefaults.standard.bool(forKey: "justLoggedOut")
         print("[Auth] signInWithGoogle invoked. forceFreshLogin=\(forceFreshLogin)")
 
         OIDAuthorizationService.discoverConfiguration(forIssuer: issuer) { configuration, error in
             guard let configuration else {
+                self.isStartingAuthorization = false
                 print("‼️ Discovery error: \(error?.localizedDescription ?? "unknown")")
                 NotificationCenter.default.post(name: .loginFailed, object: error)
                 return
@@ -179,7 +180,7 @@ final class OIDCAuthManager: NSObject, ObservableObject {
                 prefersEphemeral: prefersEphemeral,
                 extraParams: extraParams,
                 includePhoneScope: false,
-                includeAdminScope: true
+                includeAdminScope: self.requestsAdminScopeAtLogin
             )
             if forceFreshLogin {
                 UserDefaults.standard.set(false, forKey: "justLoggedOut")
@@ -210,16 +211,27 @@ final class OIDCAuthManager: NSObject, ObservableObject {
 
     // MARK: - UserInfo (name/email/phone) → UserDefaults
     private func fetchUserInfoAndCache(onComplete: ((Bool) -> Void)? = nil) {
+        func finish(_ result: Bool, syncReason: String? = "auth_profile_refresh") {
+            if let syncReason, UserDefaults.standard.string(forKey: "userId") != nil {
+                Task { await self.syncUsersBridgeIfPossible(reason: syncReason) }
+            }
+            onComplete?(result)
+        }
+
         guard let authState else {
             print("[UserInfo] No auth state available.")
-            onComplete?(false)
+            finish(false, syncReason: nil)
             return
         }
 
         authState.performAction { accessToken, _, error in
             guard error == nil, let accessToken else {
+                if self.handleExpiredSessionIfNeeded(error: error) {
+                    finish(false, syncReason: nil)
+                    return
+                }
                 print("[UserInfo] Could not fetch userinfo (token/action error). Marking logged-in anyway.")
-                onComplete?(false)
+                finish(false)
                 return
             }
 
@@ -232,8 +244,16 @@ final class OIDCAuthManager: NSObject, ObservableObject {
                     print("[CognitoProfile] Direct profile fetch skipped because access token does not include \(scope).")
                 } catch APIError.statusCode(let status, let data) {
                     let message = CognitoDirectProfileService.errorMessage(from: data) ?? "Server \(status)"
+                    if self.handleExpiredSessionIfNeeded(message: message) {
+                        finish(verifiedFromUserInfo, syncReason: nil)
+                        return
+                    }
                     print("‼️ [CognitoProfile] request error: \(message)")
                 } catch {
+                    if self.handleExpiredSessionIfNeeded(error: error) {
+                        finish(verifiedFromUserInfo, syncReason: nil)
+                        return
+                    }
                     print("‼️ [CognitoProfile] request error: \(error.localizedDescription)")
                 }
 
@@ -242,7 +262,7 @@ final class OIDCAuthManager: NSObject, ObservableObject {
                     let userinfoEndpoint = config.discoveryDocument?.userinfoEndpoint
                 else {
                     print("[UserInfo] No userinfo endpoint available; skipping OIDC userinfo fetch.")
-                    onComplete?(verifiedFromUserInfo)
+                    finish(verifiedFromUserInfo)
                     return
                 }
 
@@ -258,6 +278,9 @@ final class OIDCAuthManager: NSObject, ObservableObject {
                         let userId = (json["sub"] as? String) ?? UserDefaults.standard.string(forKey: "userId")
                         let email = json["email"] as? String
                         let phone = (json["phone_number"] as? String) ?? (json["phone"] as? String)
+                        let profileURL = (json["picture"] as? String)
+                            ?? (json["profile_url"] as? String)
+                            ?? (json["custom:profile_url"] as? String)
 
                         let emailVerified = self.claimIsTrue(json["email_verified"])
                         let phoneVerified = self.claimIsTrue(json["phone_number_verified"])
@@ -282,6 +305,10 @@ final class OIDCAuthManager: NSObject, ObservableObject {
                             print("[UserInfo] phone=\(phone)")
                             UserDefaults.standard.set(phone, forKey: "userPhone")
                         }
+                        if let profileURL {
+                            print("[UserInfo] profile_url=\(profileURL)")
+                            UserDefaults.standard.set(profileURL, forKey: "userProfileUrl")
+                        }
                         if let name {
                             print("[UserInfo] name=\(name)")
                             UserDefaults.standard.set(name, forKey: "userName")
@@ -292,7 +319,7 @@ final class OIDCAuthManager: NSObject, ObservableObject {
                 } catch {
                     print("‼️ [UserInfo] request error: \(error.localizedDescription)")
                 }
-                onComplete?(verifiedFromUserInfo)
+                finish(verifiedFromUserInfo)
             }
         }
     }
@@ -309,6 +336,10 @@ final class OIDCAuthManager: NSObject, ObservableObject {
                 self.fetchUserInfoAndCache()
                 completion(true)
             } else {
+                if self.handleExpiredSessionIfNeeded(error: error) {
+                    completion(false)
+                    return
+                }
                 print("⚠️ Token refresh failed: \(error?.localizedDescription ?? "unknown")")
                 completion(false)
             }
@@ -392,6 +423,7 @@ final class OIDCAuthManager: NSObject, ObservableObject {
         UserDefaults.standard.removeObject(forKey: "userEmail")
         UserDefaults.standard.removeObject(forKey: "userName")
         UserDefaults.standard.removeObject(forKey: "userPhone")
+        UserDefaults.standard.removeObject(forKey: "userProfileUrl")
     }
 
     // MARK: - Sign Out (Hosted UI)
@@ -425,6 +457,64 @@ final class OIDCAuthManager: NSObject, ObservableObject {
             print("⚠️ Could not form logout URL. Clearing locally.")
             clearAuthState()
             NotificationCenter.default.post(name: .didLogout, object: nil)
+        }
+    }
+}
+
+extension OIDCAuthManager {
+    func sessionExpiredError() -> NSError {
+        NSError(
+            domain: "Auth",
+            code: 401,
+            userInfo: [NSLocalizedDescriptionKey: "Your session expired. Please sign in again."]
+        )
+    }
+
+    func isSessionExpiredMessage(_ message: String?) -> Bool {
+        guard let message else { return false }
+        let normalized = message.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !normalized.isEmpty else { return false }
+
+        return normalized.contains("invalid_grant")
+            || normalized.contains("refresh token has expired")
+            || normalized.contains("token expired")
+            || normalized.contains("session expired")
+    }
+
+    @discardableResult
+    func handleExpiredSessionIfNeeded(message: String?) -> Bool {
+        guard isSessionExpiredMessage(message) else { return false }
+        expireSession(reason: message ?? "Session expired")
+        return true
+    }
+
+    @discardableResult
+    func handleExpiredSessionIfNeeded(error: Error?) -> Bool {
+        guard let error else { return false }
+
+        let nsError = error as NSError
+        let messages = [
+            nsError.localizedDescription,
+            nsError.localizedFailureReason,
+            nsError.userInfo[NSLocalizedDescriptionKey] as? String,
+            nsError.userInfo[NSLocalizedFailureReasonErrorKey] as? String,
+            nsError.userInfo["error"] as? String,
+            nsError.userInfo["error_description"] as? String
+        ]
+
+        guard messages.contains(where: { isSessionExpiredMessage($0) }) else { return false }
+        expireSession(reason: nsError.localizedDescription)
+        return true
+    }
+
+    private func expireSession(reason: String) {
+        print("[Auth] Session expired. reason=\(reason)")
+        clearAuthState()
+
+        DispatchQueue.main.async {
+            UserDefaults.standard.set(true, forKey: "justLoggedOut")
+            UserDefaults.standard.set(false, forKey: "isLoggedIn")
+            NotificationCenter.default.post(name: .verificationNeeded, object: nil)
         }
     }
 }
@@ -519,6 +609,9 @@ private extension OIDCAuthManager {
                     .joined(separator: " ")
             let preferredUsername = claims["preferred_username"] as? String
             let cognitoUsername = claims["cognito:username"] as? String
+            let profileURL = (claims["picture"] as? String)
+                ?? (claims["profile_url"] as? String)
+                ?? (claims["custom:profile_url"] as? String)
 
             verified = isVerified(claims: claims)
 
@@ -532,6 +625,7 @@ private extension OIDCAuthManager {
             if let sub { UserDefaults.standard.set(sub, forKey: "userId") }
             if let email { UserDefaults.standard.set(email, forKey: "userEmail") }
             if let phone { UserDefaults.standard.set(phone, forKey: "userPhone") }
+            if let profileURL { UserDefaults.standard.set(profileURL, forKey: "userProfileUrl") }
             if let cachedName {
                 UserDefaults.standard.set(cachedName, forKey: "userName")
             } else if shouldClearCachedName(UserDefaults.standard.string(forKey: "userName"), userId: sub) {
@@ -545,8 +639,163 @@ private extension OIDCAuthManager {
     }
 }
 
+extension OIDCAuthManager {
+    @discardableResult
+    func syncUsersBridgeIfPossible(
+        reason: String,
+        overrideName: String? = nil,
+        overrideEmail: String? = nil,
+        overridePhone: String? = nil,
+        overrideProfileURL: String? = nil
+    ) async -> Bool {
+        let defaults = UserDefaults.standard
+        let userId = normalizedBridgeValue(defaults.string(forKey: "userId"))
+        guard let userId else {
+            print("[UsersBridge] skipped (\(reason)): missing userId")
+            return false
+        }
+
+        let claims = currentIdentityClaims()
+        let claimGivenName = normalizedBridgeValue(claims?["given_name"] as? String)
+        let claimFamilyName = normalizedBridgeValue(claims?["family_name"] as? String)
+        let combinedClaimName = [claimGivenName, claimFamilyName]
+            .compactMap { $0 }
+            .joined(separator: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let resolvedName = sanitizedCachedName(
+            overrideName
+                ?? defaults.string(forKey: "userName")
+                ?? (claims?["name"] as? String)
+                ?? (combinedClaimName.isEmpty ? nil : combinedClaimName)
+                ?? (claims?["preferred_username"] as? String)
+                ?? (claims?["nickname"] as? String),
+            userId: userId
+        )
+
+        let resolvedEmail = normalizedBridgeValue(
+            overrideEmail
+                ?? defaults.string(forKey: "userEmail")
+                ?? (claims?["email"] as? String)
+        )
+        let resolvedPhone = normalizedBridgeValue(
+            overridePhone
+                ?? defaults.string(forKey: "userPhone")
+                ?? (claims?["phone_number"] as? String)
+                ?? (claims?["phone"] as? String)
+        )
+        let resolvedProfileURL = normalizedBridgeValue(
+            overrideProfileURL
+                ?? defaults.string(forKey: "userProfileUrl")
+                ?? (claims?["picture"] as? String)
+                ?? (claims?["profile_url"] as? String)
+                ?? (claims?["custom:profile_url"] as? String)
+        )
+        let preferredUsername = sanitizedCachedName(
+            claims?["preferred_username"] as? String,
+            userId: userId
+        )
+        let nickname = sanitizedCachedName(
+            claims?["nickname"] as? String,
+            userId: userId
+        )
+        let cognitoUsername = sanitizedCachedName(
+            claims?["cognito:username"] as? String,
+            userId: userId
+        )
+
+        var payload: [String: Any] = [
+            "reason": reason,
+            "userId": userId,
+            "source": "ios"
+        ]
+        if let resolvedName { payload["name"] = resolvedName }
+        if let preferredUsername { payload["preferred_username"] = preferredUsername }
+        if let nickname { payload["nickname"] = nickname }
+        if let cognitoUsername { payload["cognito_username"] = cognitoUsername }
+        if let claimGivenName { payload["given_name"] = claimGivenName }
+        if let claimFamilyName { payload["family_name"] = claimFamilyName }
+        if let resolvedEmail { payload["email"] = resolvedEmail }
+        if let resolvedPhone { payload["phone"] = resolvedPhone }
+        if let resolvedProfileURL { payload["profile_url"] = resolvedProfileURL }
+
+        if let claims {
+            if let value = claims["email_verified"] { payload["email_verified"] = claimIsTrue(value) }
+            if let value = claims["phone_number_verified"] { payload["phone_number_verified"] = claimIsTrue(value) }
+        }
+
+        do {
+            let request = APIRequestDescriptor(
+                url: AppEndpoints.Gateway.usersBridge,
+                method: .POST,
+                headers: ["X-Critic-Client": "ios"],
+                body: try APIRequestDescriptor.jsonBody(payload),
+                authorization: .currentUser
+            )
+
+            print("[UsersBridge] request: POST \(AppEndpoints.Gateway.usersBridge.absoluteString) reason=\(reason)")
+            let (data, response) = try await APIRequestExecutor.shared.perform(request)
+            let bodyText = String(data: data, encoding: .utf8) ?? "<non-utf8 body>"
+            print("[UsersBridge] status=\(response.statusCode)")
+            print("[UsersBridge] body=\(bodyText)")
+
+            guard (200...299).contains(response.statusCode) else {
+                return false
+            }
+            return true
+        } catch {
+            if handleExpiredSessionIfNeeded(error: error) {
+                return false
+            }
+            print("[UsersBridge] request error: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    private func currentIdentityClaims() -> [String: Any]? {
+        if let token = authState?.lastTokenResponse?.idToken, let claims = decodeJWT(token) {
+            return claims
+        }
+        if let token = authState?.lastAuthorizationResponse.idToken, let claims = decodeJWT(token) {
+            return claims
+        }
+        return nil
+    }
+
+    private func normalizedBridgeValue(_ value: String?) -> String? {
+        let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return (trimmed?.isEmpty == false) ? trimmed : nil
+    }
+}
+
 // MARK: - Access token helper (shared)
 extension OIDCAuthManager {
+    /// Returns a fresh ID token, reloading saved state if needed. Throws if not signed in.
+    func getIDToken() async throws -> String {
+        try await withCheckedThrowingContinuation { continuation in
+            if self.authState == nil { self.loadAuthState() }
+            guard let authState = self.authState else {
+                continuation.resume(throwing: NSError(domain: "Auth", code: 401,
+                                                      userInfo: [NSLocalizedDescriptionKey: "Missing ID token"]))
+                return
+            }
+            authState.performAction { _, idToken, error in
+                if let token = idToken {
+                    continuation.resume(returning: token)
+                } else if let error {
+                    if self.handleExpiredSessionIfNeeded(error: error) {
+                        continuation.resume(throwing: self.sessionExpiredError())
+                    } else {
+                        continuation.resume(throwing: error)
+                    }
+                } else {
+                    continuation.resume(throwing: NSError(domain: "Auth", code: 401,
+                                                          userInfo: [NSLocalizedDescriptionKey: "Missing ID token"]))
+                }
+            }
+        }
+    }
+
     /// Returns a fresh access token, reloading saved state if needed. Throws if not signed in.
     func getAccessToken() async throws -> String {
         try await withCheckedThrowingContinuation { continuation in
@@ -560,7 +809,11 @@ extension OIDCAuthManager {
                 if let token = accessToken {
                     continuation.resume(returning: token)
                 } else if let error {
-                    continuation.resume(throwing: error)
+                    if self.handleExpiredSessionIfNeeded(error: error) {
+                        continuation.resume(throwing: self.sessionExpiredError())
+                    } else {
+                        continuation.resume(throwing: error)
+                    }
                 } else {
                     continuation.resume(throwing: NSError(domain: "Auth", code: 401,
                                                           userInfo: [NSLocalizedDescriptionKey: "Missing access token"]))

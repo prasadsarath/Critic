@@ -8,11 +8,13 @@ struct FeedResponse: Codable {
 struct UserLite: Codable, Equatable {
     let userId: String?
     let name: String?
+    let phone: String?
     let profileUrl: String?
 
     enum CodingKeys: String, CodingKey {
         case userId
         case name
+        case phone
         case profileUrl = "profile_url"
     }
 }
@@ -72,6 +74,36 @@ private let reviewFeedPreviewFlag: Bool = {
     ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
 }()
 
+private let reviewFeedDebugLoggingEnabled = true
+
+private func reviewFeedPrettyJSONString(from data: Data) -> String? {
+    guard
+        let object = try? JSONSerialization.jsonObject(with: data),
+        let formatted = try? JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys]),
+        let string = String(data: formatted, encoding: .utf8)
+    else {
+        return String(data: data, encoding: .utf8)
+    }
+
+    return string
+}
+
+private func reviewFeedPostSummary(_ item: PostItem, bucket: String, index: Int) -> String {
+    let senderId = item.sender?.userId ?? item.senderId ?? "nil"
+    let senderName = item.sender?.name ?? "nil"
+    let receiverId = item.receiver?.userId ?? item.receiverId ?? "nil"
+    let receiverName = item.receiver?.name ?? "nil"
+    let content = item.postcontent.replacingOccurrences(of: "\n", with: " ")
+
+    return """
+    [ReviewFeed][\(bucket)][\(index)] postId=\(item.postId) \
+    senderId=\(senderId) senderName=\(senderName) \
+    receiverId=\(receiverId) receiverName=\(receiverName) \
+    createdAt=\(item.createdAt ?? "nil") scheduledAt=\(item.ScheduledTime ?? "nil") \
+    content=\"\(content)\"
+    """
+}
+
 @MainActor
 final class ReviewFeedViewModel: ObservableObject {
     @Published var myPosts: [PostItem] = []
@@ -104,7 +136,21 @@ final class ReviewFeedViewModel: ObservableObject {
                 queryItems: [URLQueryItem(name: "userId", value: userId)],
                 authorization: .currentUser
             )
+            if reviewFeedDebugLoggingEnabled {
+                let storedName = UserDefaults.standard.string(forKey: "userName") ?? "nil"
+                let storedEmail = UserDefaults.standard.string(forKey: "userEmail") ?? "nil"
+                print("[ReviewFeed] GET \(listURL.absoluteString)?userId=\(userId)")
+                print("[ReviewFeed] current identity userId=\(userId) userName=\(storedName) userEmail=\(storedEmail)")
+            }
             let (data, response) = try await APIRequestExecutor.shared.perform(request)
+            if reviewFeedDebugLoggingEnabled {
+                print("[ReviewFeed] response status=\(response.statusCode)")
+                if let raw = reviewFeedPrettyJSONString(from: data) {
+                    print("[ReviewFeed] raw response:\n\(raw)")
+                } else {
+                    print("[ReviewFeed] raw response: <non-utf8 \(data.count) bytes>")
+                }
+            }
 
             if !(200..<300).contains(response.statusCode) {
                 let payload = String(data: data, encoding: .utf8) ?? ""
@@ -122,9 +168,36 @@ final class ReviewFeedViewModel: ObservableObject {
                 (parseDate($0.createdAt) ?? .distantPast) > (parseDate($1.createdAt) ?? .distantPast)
             }
 
+            KnownUserDirectory.rememberCurrentUserFromDefaults()
+            (mySorted + recvSorted).forEach { item in
+                KnownUserDirectory.remember(
+                    userId: item.sender?.userId ?? item.senderId,
+                    displayName: item.sender?.name,
+                    email: nil,
+                    phone: item.sender?.phone,
+                    profileUrl: item.sender?.profileUrl
+                )
+                KnownUserDirectory.remember(
+                    userId: item.receiver?.userId ?? item.receiverId,
+                    displayName: item.receiver?.name,
+                    email: nil,
+                    phone: item.receiver?.phone,
+                    profileUrl: item.receiver?.profileUrl
+                )
+            }
+
             myPosts = mySorted
             receivedPosts = recvSorted
             hasLoadedOnce = true
+            if reviewFeedDebugLoggingEnabled {
+                print("[ReviewFeed] decoded myPosts=\(mySorted.count) receivedPosts=\(recvSorted.count)")
+                mySorted.enumerated().forEach { index, item in
+                    print(reviewFeedPostSummary(item, bucket: "myPosts", index: index))
+                }
+                recvSorted.enumerated().forEach { index, item in
+                    print(reviewFeedPostSummary(item, bucket: "receivedPosts", index: index))
+                }
+            }
         } catch {
             if error is CancellationError {
                 return

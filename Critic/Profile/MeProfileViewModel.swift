@@ -183,6 +183,10 @@ enum CognitoDirectProfileService {
     static func cache(_ response: DirectCognitoProfileResponse) {
         let resolvedUser = user(from: response)
         let resolvedIdentity = identity(from: response)
+        let resolvedProfileURL =
+            normalizedValue(attribute("custom:profile_url", in: response))
+            ?? normalizedValue(attribute("profile_url", in: response))
+            ?? normalizedValue(attribute("picture", in: response))
 
         if let sub = normalizedValue(resolvedIdentity?.sub) {
             UserDefaults.standard.set(sub, forKey: "userId")
@@ -192,6 +196,9 @@ enum CognitoDirectProfileService {
         }
         if let phone = normalizedValue(resolvedIdentity?.phoneNumber) {
             UserDefaults.standard.set(phone, forKey: "userPhone")
+        }
+        if let resolvedProfileURL {
+            UserDefaults.standard.set(resolvedProfileURL, forKey: "userProfileUrl")
         }
 
         let resolvedName = normalizedDisplayName(resolvedUser?.name, userId: resolvedIdentity?.sub)
@@ -330,7 +337,6 @@ final class MeProfileViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorText: String?
 
-    private let profileURL = AppEndpoints.Lambda.cognitoProfile
     private var hasLoaded = false
 
     func loadIfNeeded() async {
@@ -347,7 +353,23 @@ final class MeProfileViewModel: ObservableObject {
         defer { isLoading = false }
 
         do {
-            print("[Profile] request: POST \(profileURL.absoluteString)")
+            print("[Profile] request: GET \(AppEndpoints.Gateway.usersMe.absoluteString)")
+            let profile = try await UsersProfileService.fetchMe()
+            user = UsersProfileService.meUser(from: profile)
+            identity = UsersProfileService.meIdentity(from: profile)
+            print(
+                "[Profile] users_me success userId=\(identity?.sub ?? user?.userId ?? "nil") " +
+                "name=\(identity?.name ?? user?.name ?? "nil") " +
+                "email=\(identity?.email ?? "nil")"
+            )
+            errorText = nil
+            return
+        } catch {
+            print("[Profile] users_me fallback to Cognito profile: \(error.localizedDescription)")
+        }
+
+        do {
+            print("[Profile] request: POST \(AppEndpoints.Lambda.cognitoProfile.absoluteString)")
             print("[Profile] body: accessToken=<redacted>")
 
             let decoded = try await CognitoDirectProfileService.fetchForCurrentUser()
@@ -366,9 +388,18 @@ final class MeProfileViewModel: ObservableObject {
             identity = CognitoDirectProfileService.cachedIdentity()
             errorText = nil
         } catch APIError.statusCode(let status, let data) {
-            errorText = CognitoDirectProfileService.errorMessage(from: data) ?? "Server \(status)"
+            let message = CognitoDirectProfileService.errorMessage(from: data) ?? "Server \(status)"
+            if OIDCAuthManager.shared.handleExpiredSessionIfNeeded(message: message) {
+                errorText = nil
+            } else {
+                errorText = message
+            }
         } catch {
-            errorText = error.localizedDescription
+            if OIDCAuthManager.shared.handleExpiredSessionIfNeeded(error: error) {
+                errorText = nil
+            } else {
+                errorText = error.localizedDescription
+            }
         }
     }
 }

@@ -69,31 +69,37 @@ final class WriteReviewViewModel: ObservableObject {
         self.navigationManager = navigationManager ?? NavigationManager.shared
     }
 
+    private var selectedUser: UserLocation? {
+        navigationManager.selectedUser.map(KnownUserDirectory.hydrated)
+    }
+
     var targetUserName: String {
-        DisplayNameResolver.resolve(
-            displayName: navigationManager.selectedUser?.displayName,
-            userId: navigationManager.selectedUser?.id
-        )
+        guard let selectedUser else { return "User" }
+        return resolvedUserDisplayName(selectedUser)
     }
 
     var targetUserId: String? {
-        navigationManager.selectedUser?.id
+        selectedUser?.id
     }
 
     var targetUserImageSymbol: String {
-        navigationManager.selectedUser?.profileImageName ?? "person.circle.fill"
+        selectedUser?.profileImageName ?? "person.circle.fill"
     }
 
     var targetUserAvatarURL: String? {
-        navigationManager.selectedUser?.profileUrl
+        selectedUser?.profileUrl ?? KnownUserDirectory.profileUrl(for: selectedUser?.id)
     }
 
     var targetUserSeed: String? {
-        targetUserId ?? navigationManager.selectedUser?.displayName
+        selectedUser.map(resolvedUserSeed) ?? targetUserId
     }
 
     var targetDistanceText: String? {
-        guard let meters = navigationManager.selectedDistance else { return nil }
+        guard let selectedUser else { return nil }
+        guard let meters = liveDistanceMeters(
+            to: selectedUser,
+            fallback: navigationManager.selectedDistance ?? selectedUser.distanceMeters
+        ) else { return nil }
         return String(format: "%.1f meters away", meters)
     }
 

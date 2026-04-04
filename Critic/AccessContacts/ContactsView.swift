@@ -134,6 +134,12 @@ struct ContactsView: View {
                         }
                     }
                 }
+                .listStyle(.insetGrouped)
+                .modifier(ScrollBGHider())
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    Color.clear.frame(height: 24)
+                }
+                .background(CriticPalette.background)
                 .refreshable { await vm.refresh() }
             }
         }

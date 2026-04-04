@@ -175,7 +175,7 @@ private struct ARViewContainer: UIViewRepresentable {
             let meters = distanceMeters(center: center,
                                         target: CLLocationCoordinate2D(latitude: user.latitude,
                                                                        longitude: user.longitude))
-            let label = "\(user.displayName ?? user.id) · \(formatMeters(meters)) away"
+            let label = "\(resolvedUserDisplayName(user)) · \(formatMeters(meters)) away"
 
             let mesh = MeshResource.generateText(
                 label,
@@ -217,4 +217,3 @@ private func formatMeters(_ meters: Double) -> String {
     if meters >= 1000 { return String(format: "%.1f km", meters / 1000) }
     return String(format: "%.0f m", meters)
 }
-

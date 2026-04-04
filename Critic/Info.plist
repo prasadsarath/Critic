@@ -19,8 +19,6 @@
 		<string>fb</string>
 		<string>snapchat</string>
 	</array>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Critic uses your location to show nearby people and relevant reviews.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Fonts/Manrope-Bold.ttf</string>

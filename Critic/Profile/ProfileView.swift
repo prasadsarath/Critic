@@ -88,9 +88,11 @@ private struct SelfProfileContent: View {
     @Binding var name: String
     @Binding var email: String
     @Binding var bio: String
+    @Environment(\.dismiss) private var dismiss
 
     @AppStorage("userName") private var userName: String = "Guest"
     @AppStorage("userEmail") private var userEmail: String = "guest@example.com"
+    @AppStorage("userProfileUrl") private var userProfileUrl: String = ""
 
     @ObservedObject var meVM: MeProfileViewModel
 
@@ -106,14 +108,18 @@ private struct SelfProfileContent: View {
     }
 
     private var storedProfileURL: String? {
-        let value = UserDefaults.standard.string(forKey: "userProfileUrl")?.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let value, !value.isEmpty else { return nil }
+        let value = userProfileUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty else { return nil }
         return value
     }
 
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 16) {
+                CriticDetailHeader(title: navigationTitleText) {
+                    dismiss()
+                }
+
                 VStack(spacing: 18) {
                     ZStack(alignment: .bottomTrailing) {
                         Group {
@@ -196,16 +202,55 @@ private struct SelfProfileContent: View {
                             email: email,
                             bio: bio,
                             image: profileImage,
+                            remoteAvatarURL: storedProfileURL,
+                            showsCustomImage: hasCustomProfileImage,
                             onSave: { newName, newEmail, newBio, newImage in
-                                self.name = newName
+                                let trimmedName = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+                                var resolvedProfileURL = storedProfileURL
+
+                                if let newImage {
+                                    let compressedData: Data?
+                                    let contentType: String
+
+                                    if let jpegData = newImage.jpegData(compressionQuality: 0.85) {
+                                        compressedData = jpegData
+                                        contentType = "image/jpeg"
+                                    } else if let pngData = newImage.pngData() {
+                                        compressedData = pngData
+                                        contentType = "image/png"
+                                    } else {
+                                        throw APIError.invalidRequest
+                                    }
+
+                                    guard let imageData = compressedData else {
+                                        throw APIError.invalidRequest
+                                    }
+
+                                    let uploadTarget = try await UsersProfileService.requestAvatarUploadTarget(contentType: contentType)
+                                    try await UsersProfileService.uploadAvatarData(imageData, using: uploadTarget)
+                                    resolvedProfileURL = uploadTarget.fileURL
+                                }
+
+                                let updatedProfile = try await UsersProfileService.updateCurrentUser(
+                                    name: trimmedName,
+                                    bio: newBio,
+                                    profileURL: resolvedProfileURL
+                                )
+
+                                self.name = trimmedName
                                 self.email = newEmail
-                                self.userName = newName
+                                self.userName = trimmedName
                                 self.userEmail = newEmail
                                 self.bio = newBio
                                 if let newImage {
-                                    self.profileImage = newImage
+                                    self.profileImage = Image(uiImage: newImage)
                                     self.hasCustomProfileImage = true
                                 }
+                                if resolvedProfileURL != nil {
+                                    self.userProfileUrl = resolvedProfileURL ?? ""
+                                }
+                                self.meVM.user = UsersProfileService.meUser(from: updatedProfile)
+                                await self.meVM.load()
                             }
                         )
                         .navigationBarBackButtonHidden(false),
@@ -221,11 +266,11 @@ private struct SelfProfileContent: View {
                     isActive: $pushSettings
                 ) { EmptyView() }
             }
+            .padding(.top, 8)
         }
         .background(CriticPalette.background.ignoresSafeArea())
-        .navigationTitle(navigationTitleText)
-        .navigationBarTitleDisplayMode(.inline)
-        .criticNavigationBarBackground(CriticPalette.background)
+        .navigationBarBackButtonHidden(true)
+        .navigationBarHidden(true)
         .onAppear { syncFromStorage() }
         .onChange(of: userName) { _ in syncFromStorage() }
         .onChange(of: userEmail) { _ in syncFromStorage() }
@@ -356,6 +401,8 @@ private struct SelfProfileContent: View {
         UserDefaults.standard.set(true, forKey: "justLoggedOut")
         UserDefaults.standard.removeObject(forKey: "userName")
         UserDefaults.standard.removeObject(forKey: "userEmail")
+        UserDefaults.standard.removeObject(forKey: "userProfileUrl")
+        userProfileUrl = ""
         profileImage = Image(systemName: "person.circle.fill")
         hasCustomProfileImage = false
         NavigationManager.shared.showInbox = false
@@ -470,16 +517,7 @@ private struct ProfileWatermarkAvatar: View {
     var body: some View {
         ZStack {
             Circle()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            CriticPalette.surface,
-                            CriticPalette.primarySoft.opacity(0.55)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+                .fill(CriticPalette.surface)
 
             Circle()
                 .stroke(CriticPalette.outline, lineWidth: 1)
@@ -488,10 +526,9 @@ private struct ProfileWatermarkAvatar: View {
                 .resizable()
                 .scaledToFit()
                 .padding(size * 0.2)
-                .opacity(0.24)
+                .opacity(0.3)
         }
         .frame(width: size, height: size)
-        .shadow(color: Color(hex: 0x151A2D, alpha: 0.03), radius: 8, x: 0, y: 3)
         .accessibilityLabel("Default profile logo")
     }
 }
@@ -499,9 +536,16 @@ private struct ProfileWatermarkAvatar: View {
 // MARK: - External Profile Content (common UI used everywhere)
 private struct ExternalProfileContent: View {
     let user: UserLocation
+    @Environment(\.dismiss) private var dismiss
+    @State private var refreshedUser: UserLocation?
+    @State private var fetchedProfile: UsersTableProfile?
+
+    private var displayedUser: UserLocation {
+        refreshedUser ?? KnownUserDirectory.hydrated(user)
+    }
 
     private var resolvedDisplayName: String {
-        DisplayNameResolver.resolve(displayName: user.displayName, userId: user.id)
+        resolvedUserDisplayName(displayedUser)
     }
 
     private var navigationTitleText: String {
@@ -509,14 +553,37 @@ private struct ExternalProfileContent: View {
         return trimmed.isEmpty || trimmed == "User" ? "Profile" : trimmed
     }
 
+    private var subtitleText: String {
+        if let memberSinceText {
+            return memberSinceText
+        }
+        return displayedUser.isSimulated == true ? "Simulated nearby user" : "Nearby user"
+    }
+
+    private var memberSinceText: String? {
+        guard let raw = fetchedProfile?.createdAt ?? fetchedProfile?.updatedAt else { return nil }
+        return "User since \(humanReadableProfileDate(raw))"
+    }
+
+    private var distanceText: String? {
+        guard let meters = liveDistanceMeters(to: displayedUser, fallback: displayedUser.distanceMeters) else {
+            return nil
+        }
+        return "\(homeFormatMeters(meters)) away"
+    }
+
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 16) {
+                CriticDetailHeader(title: navigationTitleText) {
+                    dismiss()
+                }
+
                 VStack(spacing: 16) {
                     AvatarView(
-                        urlString: user.profileUrl,
-                        seed: user.displayName ?? user.id,
-                        fallbackSystemName: user.profileImageName,
+                        urlString: displayedUser.profileUrl,
+                        seed: resolvedUserSeed(displayedUser),
+                        fallbackSystemName: displayedUser.profileImageName,
                         size: 108,
                         backgroundColor: CriticPalette.surface,
                         tintColor: CriticPalette.primary
@@ -527,24 +594,40 @@ private struct ExternalProfileContent: View {
                         .foregroundColor(CriticPalette.onSurface)
                         .multilineTextAlignment(.center)
 
-                    Text("Exploring places nearby…")
+                    Text(subtitleText)
                         .font(.critic(.body))
                         .foregroundColor(CriticPalette.onSurfaceMuted)
                         .multilineTextAlignment(.center)
+
+                    if let distanceText {
+                        Text(distanceText)
+                            .font(.critic(.bodyStrong))
+                            .foregroundColor(CriticPalette.primary)
+                    }
                 }
                 .padding(20)
                 .criticCard()
 
                 VStack(spacing: 0) {
-                    ProfileInfoRow(title: "Posts", value: "—")
+                    ProfileInfoRow(title: "Distance", value: distanceText ?? "Updating location…")
+                    if let memberSinceText {
+                        Divider().padding(.leading, 16)
+                        ProfileInfoRow(title: "User Since", value: memberSinceText.replacingOccurrences(of: "User since ", with: ""))
+                    }
                     Divider().padding(.leading, 16)
-                    ProfileInfoRow(title: "About", value: "Exploring places nearby…")
+                    ProfileInfoRow(
+                        title: "Status",
+                        value: displayedUser.isSimulated == true ? "Simulated nearby user" : "Live nearby user"
+                    )
                 }
                 .criticCard()
 
                 Button {
-                    NavigationManager.shared.selectedUser = user
-                    NavigationManager.shared.selectedDistance = nil
+                    NavigationManager.shared.selectedUser = displayedUser
+                    NavigationManager.shared.selectedDistance = liveDistanceMeters(
+                        to: displayedUser,
+                        fallback: displayedUser.distanceMeters
+                    )
                     NavigationManager.shared.showWritePost = true
                 } label: {
                     Text("Write")
@@ -553,12 +636,56 @@ private struct ExternalProfileContent: View {
                 .buttonStyle(CriticFilledButtonStyle())
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.top, 8)
+            .padding(.bottom, 12)
         }
         .background(CriticPalette.background.ignoresSafeArea())
-        .navigationTitle(navigationTitleText)
-        .navigationBarTitleDisplayMode(.inline)
-        .criticNavigationBarBackground(CriticPalette.background)
+        .navigationBarBackButtonHidden(true)
+        .navigationBarHidden(true)
+        .task(id: user.id) {
+            await refreshFromUsersTableIfPossible()
+        }
+    }
+
+    private func refreshFromUsersTableIfPossible() async {
+        do {
+            print("[ExternalProfile] request users_get for userId=\(user.id)")
+            let profile = try await UsersProfileService.fetchUser(userId: user.id)
+            let merged = UsersProfileService.merge(profile, onto: user)
+            print(
+                "[ExternalProfile] users_get success requestedUserId=\(user.id) " +
+                "resolvedUserId=\(merged.id) name=\(merged.displayName ?? "nil") " +
+                "email=\(merged.email ?? "nil")"
+            )
+            fetchedProfile = profile
+            refreshedUser = merged
+            if NavigationManager.shared.selectedUser?.id == merged.id {
+                NavigationManager.shared.selectedUser = merged
+                NavigationManager.shared.selectedDistance = liveDistanceMeters(
+                    to: merged,
+                    fallback: merged.distanceMeters
+                )
+            }
+        } catch {
+            print("[ExternalProfile] users_get failed for \(user.id): \(error.localizedDescription)")
+        }
+    }
+
+    private func humanReadableProfileDate(_ raw: String) -> String {
+        let parser = ISO8601DateFormatter()
+        parser.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let fallbackParser = ISO8601DateFormatter()
+        fallbackParser.formatOptions = [.withInternetDateTime]
+
+        let date = parser.date(from: raw) ?? fallbackParser.date(from: raw)
+        guard let date else { return raw }
+
+        let formatter = DateFormatter()
+        formatter.locale = .current
+        formatter.timeZone = .current
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter.string(from: date)
     }
 }
 
@@ -566,8 +693,9 @@ private struct ExternalProfileContent: View {
 struct ProfileMenuRow: View {
     var icon: String
     var text: String
-    var textColor: Color = .primary
-    var iconColor: Color = .accentColor
+    var textColor: Color = CriticPalette.onSurface
+    var iconColor: Color = CriticPalette.primary
+    var showsChevron: Bool = false
     var action: () -> Void
 
     var body: some View {
@@ -581,10 +709,10 @@ struct ProfileMenuRow: View {
                     opacity: icon == "rectangle.portrait.and.arrow.forward" ? 0.10 : 0.08
                 )
                 Text(text)
-                    .font(.critic(.body))
+                    .font(.critic(.listTitle))
                     .foregroundColor(textColor)
                 Spacer()
-                if text != "Logout" {
+                if showsChevron {
                     Image(systemName: "chevron.right")
                         .foregroundColor(CriticPalette.onSurfaceMuted)
                         .font(.system(size: 17, weight: .semibold))
@@ -619,6 +747,244 @@ struct ProfileInfoRow: View {
     }
 }
 
+private struct CriticSettingsSection<Content: View>: View {
+    let title: String
+    let content: Content
+
+    init(title: String, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title.uppercased())
+                .font(.critic(.sectionHeader))
+                .foregroundColor(CriticPalette.onSurfaceMuted)
+                .tracking(1.1)
+                .padding(.horizontal, 6)
+
+            VStack(spacing: 0) {
+                content
+            }
+            .criticCard()
+        }
+    }
+}
+
+private struct CriticSettingsRowLabel: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    let iconColor: Color
+    var titleColor: Color = CriticPalette.onSurface
+    var showsChevron: Bool = true
+
+    var body: some View {
+        HStack(spacing: 14) {
+            CriticSoftIcon(
+                systemName: icon,
+                color: iconColor,
+                size: 50,
+                iconSize: 21,
+                opacity: 0.12
+            )
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.critic(.listTitle))
+                    .foregroundColor(titleColor)
+                Text(subtitle)
+                    .font(.critic(.body))
+                    .foregroundColor(CriticPalette.onSurfaceMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 12)
+
+            if showsChevron {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(CriticPalette.onSurfaceMuted)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 15)
+        .contentShape(Rectangle())
+    }
+}
+
+private struct CriticSettingsToggleRow: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    let iconColor: Color
+    @Binding var isOn: Bool
+
+    var body: some View {
+        HStack(spacing: 14) {
+            CriticSoftIcon(
+                systemName: icon,
+                color: iconColor,
+                size: 50,
+                iconSize: 21,
+                opacity: 0.12
+            )
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.critic(.listTitle))
+                    .foregroundColor(CriticPalette.onSurface)
+                Text(subtitle)
+                    .font(.critic(.body))
+                    .foregroundColor(CriticPalette.onSurfaceMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 12)
+
+            Toggle("", isOn: $isOn)
+                .labelsHidden()
+                .tint(CriticPalette.primary)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 15)
+    }
+}
+
+private struct CriticFormField: View {
+    let title: String
+    let placeholder: String
+    @Binding var text: String
+    var keyboardType: UIKeyboardType = .default
+    var textContentType: UITextContentType? = nil
+    var textInputAutocapitalization: TextInputAutocapitalization = .sentences
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.critic(.sectionHeader))
+                .foregroundColor(CriticPalette.onSurfaceMuted)
+
+            TextField(placeholder, text: $text)
+                .font(.critic(.listTitle))
+                .foregroundColor(CriticPalette.onSurface)
+                .keyboardType(keyboardType)
+                .textContentType(textContentType)
+                .textInputAutocapitalization(textInputAutocapitalization)
+                .disableAutocorrection(true)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 16)
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(CriticPalette.surface)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(CriticPalette.outline, lineWidth: 1)
+                        )
+                )
+        }
+    }
+}
+
+private struct CriticLockedValueField: View {
+    let title: String
+    let value: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.critic(.sectionHeader))
+                .foregroundColor(CriticPalette.onSurfaceMuted)
+
+            HStack(spacing: 12) {
+                Text(value)
+                    .font(.critic(.listTitle))
+                    .foregroundColor(CriticPalette.onSurface)
+                    .lineLimit(1)
+                Spacer(minLength: 8)
+                Image(systemName: "lock")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(CriticPalette.onSurfaceMuted)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 16)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(CriticPalette.surface)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(CriticPalette.outline, lineWidth: 1)
+                    )
+            )
+        }
+    }
+}
+
+private struct CriticMultilineField: View {
+    let title: String
+    let placeholder: String
+    @Binding var text: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.critic(.sectionHeader))
+                .foregroundColor(CriticPalette.onSurfaceMuted)
+
+            ZStack(alignment: .topLeading) {
+                if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Text(placeholder)
+                        .font(.critic(.body))
+                        .foregroundColor(CriticPalette.onSurfaceMuted)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 16)
+                }
+
+                TextEditor(text: $text)
+                    .font(.critic(.body))
+                    .foregroundColor(CriticPalette.onSurface)
+                    .modifier(ScrollBGHider())
+                    .frame(minHeight: 120)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(CriticPalette.surface)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(CriticPalette.outline, lineWidth: 1)
+                    )
+            )
+        }
+    }
+}
+
+private struct CriticTermsConsentRow: View {
+    @Binding var isAccepted: Bool
+
+    var body: some View {
+        Button {
+            isAccepted.toggle()
+        } label: {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: isAccepted ? "checkmark.square.fill" : "square")
+                    .font(.system(size: 28, weight: .semibold))
+                    .foregroundColor(CriticPalette.primary)
+
+                Text(isAccepted ? "I accept the Terms & Conditions." : "Accept the Terms & Conditions to continue.")
+                    .font(.critic(.body))
+                    .foregroundColor(CriticPalette.onSurface)
+                    .multilineTextAlignment(.leading)
+
+                Spacer(minLength: 0)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 // MARK: - Edit Profile View (iOS 15 safe)
 struct EditProfileView: View {
     @Environment(\.dismiss) private var dismiss
@@ -627,90 +993,174 @@ struct EditProfileView: View {
     @State var email: String
     @State var bio: String
     @State var image: Image
-    var onSave: (_ name: String, _ email: String, _ bio: String, _ newImage: Image?) -> Void
+    let remoteAvatarURL: String?
+    let showsCustomImage: Bool
+    var onSave: (_ name: String, _ email: String, _ bio: String, _ newImage: UIImage?) async throws -> Void
 
     @State private var showPhotoSheet = false
     @State private var pickedUIImage: UIImage?
+    @State private var hasAcceptedGuidelines = true
+    @State private var isSaving = false
+    @State private var saveErrorText: String?
+
+    private var canSave: Bool {
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && hasAcceptedGuidelines
+    }
+
+    @ViewBuilder
+    private var avatarPreview: some View {
+        if let pickedUIImage {
+            Image(uiImage: pickedUIImage)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 116, height: 116)
+                .clipShape(Circle())
+        } else if showsCustomImage {
+            image
+                .resizable()
+                .scaledToFill()
+                .frame(width: 116, height: 116)
+                .clipShape(Circle())
+        } else if let remoteAvatarURL, !remoteAvatarURL.isEmpty {
+            AvatarView(
+                urlString: remoteAvatarURL,
+                seed: name.isEmpty ? email : name,
+                fallbackSystemName: "person.crop.circle.fill",
+                size: 116,
+                backgroundColor: CriticPalette.surface,
+                tintColor: CriticPalette.primary
+            )
+        } else {
+            ProfileWatermarkAvatar(size: 116)
+        }
+    }
 
     var body: some View {
-        Form {
-            Section {
-                HStack(spacing: 16) {
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: 72, height: 72)
-                        .clipShape(Circle())
-                        .overlay(Circle().stroke(Color(.systemGray5), lineWidth: 1))
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 22) {
+                CriticDetailHeader(title: "Edit profile") {
+                    dismiss()
+                }
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Your public Avatar")
-                            .font(.footnote)
-                            .foregroundColor(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Button("Change Photo") {
-                            showPhotoSheet = true
+                VStack(spacing: 18) {
+                    ZStack(alignment: .bottomTrailing) {
+                        avatarPreview
+
+                        Button(action: { showPhotoSheet = true }) {
+                            Image(systemName: "pencil")
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundColor(.white)
+                                .frame(width: 38, height: 38)
+                                .background(Circle().fill(CriticPalette.primary))
+                        }
+                        .offset(x: 8, y: 8)
+                    }
+
+                    Text("Add a clear face photo - this builds trust.")
+                        .font(.critic(.body))
+                        .foregroundColor(CriticPalette.onSurfaceMuted)
+                        .multilineTextAlignment(.center)
+
+                    Button {
+                        showPhotoSheet = true
+                    } label: {
+                        Label("Try another avatar", systemImage: "arrow.triangle.2.circlepath")
+                            .font(.critic(.pageTitle))
+                            .foregroundColor(CriticPalette.primary)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(24)
+                .criticCard()
+
+                VStack(spacing: 16) {
+                    CriticFormField(
+                        title: "Full name *",
+                        placeholder: "Enter your full name",
+                        text: $name,
+                        textContentType: .name,
+                        textInputAutocapitalization: .words
+                    )
+                    CriticLockedValueField(title: "Email *", value: email)
+                    CriticMultilineField(
+                        title: "Bio",
+                        placeholder: "Tell people what kind of feedback you like to receive.",
+                        text: $bio
+                    )
+                }
+                .padding(20)
+                .criticCard()
+
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Safety & guidelines")
+                        .font(.critic(.display))
+                        .foregroundColor(CriticPalette.onSurface)
+
+                    Text("Critic is based on real people and trust. Please agree to our community rules before you continue.")
+                        .font(.critic(.body))
+                        .foregroundColor(CriticPalette.onSurfaceMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    CriticTermsConsentRow(isAccepted: $hasAcceptedGuidelines)
+                }
+                .padding(20)
+                .criticCard()
+
+                Button {
+                    Task {
+                        await saveChanges()
+                    }
+                } label: {
+                    Group {
+                        if isSaving {
+                            ProgressView()
+                                .progressViewStyle(.circular)
+                                .tint(.white)
+                                .frame(maxWidth: .infinity)
+                        } else {
+                            Text("Save changes")
+                                .frame(maxWidth: .infinity)
                         }
                     }
                 }
+                .buttonStyle(CriticFilledButtonStyle())
+                .disabled(!canSave || isSaving)
             }
-
-            Section(header: Text("How others see you")) {
-                HStack(alignment: .top, spacing: 12) {
-                    Image(systemName: "info.circle.fill")
-                        .foregroundColor(.accentColor)
-                        .font(.body)
-                        .padding(.top, 2)
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("When you post, you will appear as.")
-                            .font(.footnote)
-                            .foregroundColor(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                        TextField("Full Name", text: $name)
-                            .textContentType(.name)
-                    }
-                }
-
-                HStack(alignment: .top, spacing: 12) {
-                    Image(systemName: "envelope")
-                        .foregroundColor(.accentColor)
-                        .font(.body)
-                        .padding(.top, 2)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("e-Mail")
-                            .font(.footnote)
-                            .foregroundColor(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Text(email)
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Bio")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    TextEditor(text: $bio)
-                        .frame(minHeight: 80, maxHeight: 140)
-                }
-            }
-
-            Section {
-                Button("Save") {
-                    let newImage: Image? = pickedUIImage.map { Image(uiImage: $0) }
-                    onSave(name, email, bio, newImage)
-                    dismiss()
-                }
-                .font(.headline)
-            }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 28)
         }
-        .navigationTitle("Edit Profile")
-        .navigationBarTitleDisplayMode(.inline)
+        .background(CriticPalette.background.ignoresSafeArea())
+        .navigationBarBackButtonHidden(true)
+        .navigationBarHidden(true)
+        .environment(\.colorScheme, .light)
         .sheet(isPresented: $showPhotoSheet) {
             PhotoPicker(image: $pickedUIImage)
                 .onChange(of: pickedUIImage) { newValue in
                     if let ui = newValue { image = Image(uiImage: ui) }
                 }
+        }
+        .alert("Couldn't save profile", isPresented: Binding(
+            get: { saveErrorText != nil },
+            set: { if !$0 { saveErrorText = nil } }
+        )) {
+            Button("OK", role: .cancel) { saveErrorText = nil }
+        } message: {
+            Text(saveErrorText ?? "Please try again.")
+        }
+    }
+
+    private func saveChanges() async {
+        guard canSave, !isSaving else { return }
+        isSaving = true
+        defer { isSaving = false }
+
+        do {
+            try await onSave(name, email, bio, pickedUIImage)
+            dismiss()
+        } catch {
+            saveErrorText = error.localizedDescription
         }
     }
 }
@@ -727,53 +1177,66 @@ struct InviteFriendsSheet: View {
 
     var body: some View {
         NavigationView {
-            VStack(spacing: 16) {
-                Text("Invite a friend")
-                    .font(.system(.title3, design: .rounded)).bold()
-                    .padding(.top, 8)
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 18) {
+                    CriticDetailHeader(title: "Invite a friend") {
+                        dismiss()
+                    }
 
-                Text("Share your invite link using your favorite app.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    VStack(spacing: 8) {
+                        Text("Share your invite link using your favorite app.")
+                            .font(.critic(.body))
+                            .foregroundColor(CriticPalette.onSurfaceMuted)
+                            .multilineTextAlignment(.center)
 
-                VStack(spacing: 12) {
-                    if isWhatsAppInstalled {
-                        InviteRow(title: "WhatsApp", systemIcon: "message.fill") {
-                            let text = "Hey! Join me on Critic: \(inviteURL.absoluteString)"
-                            let encoded = text.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-                            if let url = URL(string: "whatsapp://send?text=\(encoded)") {
-                                UIApplication.shared.open(url, options: [:], completionHandler: nil)
+                        Text(inviteURL.absoluteString)
+                            .font(.critic(.caption))
+                            .foregroundColor(CriticPalette.primary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(20)
+                    .criticCard()
+
+                    VStack(spacing: 12) {
+                        if isWhatsAppInstalled {
+                            InviteRow(title: "WhatsApp", systemIcon: "message.fill") {
+                                let text = "Hey! Join me on Critic: \(inviteURL.absoluteString)"
+                                let encoded = text.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+                                if let url = URL(string: "whatsapp://send?text=\(encoded)") {
+                                    UIApplication.shared.open(url, options: [:], completionHandler: nil)
+                                }
+                                dismiss()
                             }
-                            dismiss()
                         }
-                    }
-                    if isFacebookInstalled {
-                        InviteRow(title: "Facebook", systemIcon: "f.square.fill") {
+
+                        if isFacebookInstalled {
+                            InviteRow(title: "Facebook", systemIcon: "f.square.fill") {
+                                showShareSheet = true
+                            }
+                        }
+
+                        if isSnapchatInstalled {
+                            InviteRow(title: "Snapchat", systemIcon: "bolt.fill") {
+                                showShareSheet = true
+                            }
+                        }
+
+                        InviteRow(title: "More…", systemIcon: "square.and.arrow.up") {
                             showShareSheet = true
                         }
                     }
-                    if isSnapchatInstalled {
-                        InviteRow(title: "Snapchat", systemIcon: "bolt.fill") {
-                            showShareSheet = true
-                        }
-                    }
-
-                    InviteRow(title: "More…", systemIcon: "square.and.arrow.up") {
-                        showShareSheet = true
-                    }
+                    .padding(20)
+                    .criticCard()
                 }
-                .padding(.top, 6)
-
-                Spacer()
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 24)
             }
-            .padding()
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Done") { dismiss() }
-                }
-            }
+            .background(CriticPalette.background.ignoresSafeArea())
+            .navigationBarBackButtonHidden(true)
+            .navigationBarHidden(true)
         }
+        .environment(\.colorScheme, .light)
         .sheet(isPresented: $showShareSheet) {
             ShareSheet(activityItems: ["Join me on Critic!", inviteURL])
         }
@@ -790,87 +1253,464 @@ struct InviteRow: View {
             HStack(spacing: 12) {
                 Image(systemName: systemIcon)
                     .frame(width: 28, height: 28)
-                    .foregroundColor(.accentColor)
+                    .foregroundColor(CriticPalette.primary)
                 Text(title)
-                    .font(.system(size: 17, weight: .regular, design: .rounded))
+                    .font(.critic(.listTitle))
+                    .foregroundColor(CriticPalette.onSurface)
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .foregroundColor(.secondary)
+                    .foregroundColor(CriticPalette.onSurfaceMuted)
             }
             .padding()
-            .background(RoundedRectangle(cornerRadius: 12).fill(Color(.secondarySystemBackground)))
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(CriticPalette.surfaceVariant)
+            )
         }
+        .buttonStyle(.plain)
     }
 }
 
 // MARK: - Settings View (iOS 15 safe)
 struct SettingsView: View {
+    @Environment(\.dismiss) private var dismiss
     @AppStorage("notifications_enabled") private var notificationsEnabled = true
-    @AppStorage("dark_mode_enabled") private var darkModeEnabled = false
 
     var onLogout: () -> Void
     var onRequestAccountDeletion: () -> Void
 
     var body: some View {
-        List {
-            Section {
-                HStack {
-                    Label("Notification", systemImage: "bell")
-                    Spacer()
-                    Toggle("", isOn: $notificationsEnabled).labelsHidden()
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 22) {
+                CriticDetailHeader(title: "Settings") {
+                    dismiss()
                 }
 
-                Button { darkModeEnabled.toggle() } label: {
-                    Label("Dark Mode", systemImage: "sun.max").foregroundColor(.primary)
+                CriticSettingsSection(title: "Preferences") {
+                    CriticSettingsToggleRow(
+                        icon: "bell.badge.fill",
+                        title: "Notifications",
+                        subtitle: "Mentions and activity alerts",
+                        iconColor: CriticPalette.warning,
+                        isOn: $notificationsEnabled
+                    )
+
+                    Divider().padding(.leading, 80)
+
+                    Button {
+                        AppReviewRequester.requestReview()
+                    } label: {
+                        CriticSettingsRowLabel(
+                            icon: "star.fill",
+                            title: "Rate App",
+                            subtitle: "Tell us how Critic is working for you",
+                            iconColor: CriticPalette.warning
+                        )
+                    }
+                    .buttonStyle(.plain)
                 }
 
-                Button {
-                    AppReviewRequester.requestReview()
-                } label: {
-                    Label("Rate App", systemImage: "star")
+                CriticSettingsSection(title: "Account") {
+                    NavigationLink {
+                        PrivacyVisibilityView()
+                    } label: {
+                        CriticSettingsRowLabel(
+                            icon: "lock.fill",
+                            title: "Privacy & Visibility",
+                            subtitle: "Control what others can see about you",
+                            iconColor: CriticPalette.primary
+                        )
+                    }
+                    .buttonStyle(.plain)
                 }
 
-                Button { ShareSheet.present(items: ["Check out Critic!", AppExternalLinks.website]) } label: {
-                    Label("Share App", systemImage: "square.and.arrow.up")
+                CriticSettingsSection(title: "Legal") {
+                    Button {
+                        UIApplication.shared.open(AppExternalLinks.terms)
+                    } label: {
+                        CriticSettingsRowLabel(
+                            icon: "doc.text.fill",
+                            title: "Terms & Conditions",
+                            subtitle: "Review the community rules",
+                            iconColor: CriticPalette.primary
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                CriticSettingsSection(title: "Support") {
+                    NavigationLink {
+                        HelpFeedbackView()
+                    } label: {
+                        CriticSettingsRowLabel(
+                            icon: "bubble.right.fill",
+                            title: "Help & Feedback",
+                            subtitle: "Send product suggestions or bug reports",
+                            iconColor: CriticPalette.accent
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                CriticSettingsSection(title: "Account") {
+                    Button {
+                        onLogout()
+                    } label: {
+                        CriticSettingsRowLabel(
+                            icon: "rectangle.portrait.and.arrow.right.fill",
+                            title: "Log Out",
+                            subtitle: "Sign out and return to login",
+                            iconColor: CriticPalette.error,
+                            titleColor: CriticPalette.error,
+                            showsChevron: false
+                        )
+                    }
+                    .buttonStyle(.plain)
+
+                    Divider().padding(.leading, 80)
+
+                    Button {
+                        onRequestAccountDeletion()
+                    } label: {
+                        CriticSettingsRowLabel(
+                            icon: "trash.fill",
+                            title: "Request Account Deletion",
+                            subtitle: "Ask support to remove your account",
+                            iconColor: CriticPalette.error,
+                            titleColor: CriticPalette.error,
+                            showsChevron: false
+                        )
+                    }
+                    .buttonStyle(.plain)
                 }
             }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 28)
+        }
+        .background(CriticPalette.background.ignoresSafeArea())
+        .navigationBarBackButtonHidden(true)
+        .navigationBarHidden(true)
+        .environment(\.colorScheme, .light)
+    }
+}
 
-            Section {
-                NavigationLink {
-                    PrivacyVisibilityView()
-                } label: {
-                    Label("Privacy", systemImage: "lock")
+struct HelpFeedbackView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var message: String = ""
+    @State private var isSubmitting = false
+    @State private var submitError: String?
+    @State private var successMessage: String?
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 24) {
+                CriticDetailHeader(title: "Help & Feedback") {
+                    dismiss()
                 }
 
-                LinkRow(
-                    title: "Terms and Conditions",
-                    systemImage: "doc.text",
-                    url: AppExternalLinks.terms
-                )
-                LinkRow(title: "Cookies Policy", systemImage: "doc.on.doc", url: AppExternalLinks.cookies)
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("FEEDBACK")
+                        .font(.critic(.sectionHeader))
+                        .foregroundColor(CriticPalette.onSurfaceMuted)
+                        .tracking(1.1)
+                        .padding(.horizontal, 6)
+
+                    VStack(alignment: .leading, spacing: 18) {
+                        FeedbackComposerField(text: $message)
+
+                        Button {
+                            Task { await submitFeedback() }
+                        } label: {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .fill(CriticPalette.primary)
+
+                                if isSubmitting {
+                                    ProgressView()
+                                        .tint(.white)
+                                } else {
+                                    Text("Send")
+                                        .font(.critic(.button))
+                                        .foregroundColor(.white)
+                                }
+                            }
+                            .frame(height: 64)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isSubmitting || trimmedMessage.isEmpty)
+                        .opacity(isSubmitting || trimmedMessage.isEmpty ? 0.7 : 1)
+
+                        Text(successMessage ?? "We usually review feedback within a few days.")
+                            .font(.critic(.body))
+                            .foregroundColor(successMessage == nil ? CriticPalette.onSurfaceMuted : CriticPalette.success)
+
+                        NavigationLink {
+                            FeedbackSubmissionsView()
+                        } label: {
+                            HStack(spacing: 10) {
+                                Image(systemName: "clock.arrow.circlepath")
+                                    .font(.system(size: 21, weight: .semibold))
+                                Text("View My Submissions")
+                                    .font(.critic(.button))
+                            }
+                            .foregroundColor(CriticPalette.primary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 6)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(18)
+                    .criticCard()
+                }
             }
-
-            Section {
-                LinkRow(title: "Contact", systemImage: "envelope", url: AppExternalLinks.contactMailtoURL)
-                LinkRow(title: "Feedback", systemImage: "bubble.right", url: AppExternalLinks.feedback)
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 28)
+        }
+        .background(CriticPalette.background.ignoresSafeArea())
+        .navigationBarBackButtonHidden(true)
+        .navigationBarHidden(true)
+        .environment(\.colorScheme, .light)
+        .alert(
+            "Couldn't Send Feedback",
+            isPresented: Binding(
+                get: { submitError != nil },
+                set: { if !$0 { submitError = nil } }
+            ),
+            actions: {
+                Button("OK", role: .cancel) { submitError = nil }
+            },
+            message: {
+                Text(submitError ?? "Please try again.")
             }
+        )
+    }
 
-            Section {
-                Button(role: .destructive) { onLogout() } label: {
-                    Label("Log Out", systemImage: "rectangle.portrait.and.arrow.right")
-                        .foregroundColor(.red)
-                }
+    private var trimmedMessage: String {
+        message.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 
-                Button(role: .destructive) { onRequestAccountDeletion() } label: {
-                    Label("Request Account Deletion", systemImage: "trash")
-                        .foregroundColor(.red)
+    @MainActor
+    private func submitFeedback() async {
+        guard !trimmedMessage.isEmpty, !isSubmitting else { return }
+        isSubmitting = true
+        defer { isSubmitting = false }
+
+        do {
+            let submission = try await FeedbackService.submit(message: trimmedMessage)
+            let statusText = submission?.statusText ?? "Submitted"
+            print("[HelpFeedback] submit success status=\(statusText)")
+            successMessage = "Thanks. Your feedback was sent."
+            message = ""
+        } catch {
+            print("[HelpFeedback] submit failed error=\(error.localizedDescription)")
+            submitError = feedbackErrorText(from: error)
+        }
+    }
+
+    private func feedbackErrorText(from error: Error) -> String {
+        if let apiError = error as? APIError {
+            switch apiError {
+            case .statusCode(_, let data):
+                if let data,
+                   let text = String(data: data, encoding: .utf8),
+                   !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    return text
                 }
+            case .invalidRequest:
+                return "Enter some feedback before sending."
+            default:
+                break
             }
         }
-        .listStyle(.insetGrouped)
-        .navigationTitle("Settings")
-        .navigationBarTitleDisplayMode(.inline)
-        .environment(\.colorScheme, darkModeEnabled ? .dark : .light)
+        return error.localizedDescription
+    }
+}
+
+struct FeedbackSubmissionsView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var submissions: [FeedbackSubmission] = []
+    @State private var isLoading = false
+    @State private var loadError: String?
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 24) {
+                CriticDetailHeader(title: "My Feedback") {
+                    dismiss()
+                }
+
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("SUBMISSIONS")
+                        .font(.critic(.sectionHeader))
+                        .foregroundColor(CriticPalette.onSurfaceMuted)
+                        .tracking(1.1)
+                        .padding(.horizontal, 6)
+
+                    if isLoading && submissions.isEmpty {
+                        VStack(spacing: 14) {
+                            ProgressView()
+                            Text("Loading your feedback...")
+                                .font(.critic(.body))
+                                .foregroundColor(CriticPalette.onSurfaceMuted)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 48)
+                        .criticCard()
+                    } else if let loadError {
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text(loadError)
+                                .font(.critic(.body))
+                                .foregroundColor(CriticPalette.error)
+                                .fixedSize(horizontal: false, vertical: true)
+
+                            Button("Retry") {
+                                Task { await loadSubmissions() }
+                            }
+                            .font(.critic(.button))
+                            .foregroundColor(CriticPalette.primary)
+                            .buttonStyle(.plain)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(20)
+                        .criticCard()
+                    } else if submissions.isEmpty {
+                        VStack(spacing: 12) {
+                            CriticSoftIcon(
+                                systemName: "bubble.left.and.bubble.right",
+                                color: CriticPalette.primary,
+                                size: 56,
+                                iconSize: 23
+                            )
+                            Text("No submissions yet")
+                                .font(.critic(.listTitle))
+                                .foregroundColor(CriticPalette.onSurface)
+                            Text("Send product feedback or bug reports from the previous screen and they will appear here.")
+                                .font(.critic(.body))
+                                .foregroundColor(CriticPalette.onSurfaceMuted)
+                                .multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(24)
+                        .criticCard()
+                    } else {
+                        VStack(spacing: 12) {
+                            ForEach(Array(submissions.enumerated()), id: \.offset) { _, submission in
+                                FeedbackSubmissionRow(submission: submission)
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 28)
+        }
+        .background(CriticPalette.background.ignoresSafeArea())
+        .navigationBarBackButtonHidden(true)
+        .navigationBarHidden(true)
+        .environment(\.colorScheme, .light)
+        .task {
+            guard submissions.isEmpty else { return }
+            await loadSubmissions()
+        }
+        .refreshable {
+            await loadSubmissions()
+        }
+    }
+
+    @MainActor
+    private func loadSubmissions() async {
+        guard !isLoading else { return }
+        isLoading = true
+        loadError = nil
+        defer { isLoading = false }
+
+        do {
+            submissions = try await FeedbackService.fetchSubmissions()
+            print("[FeedbackSubmissions] loaded count=\(submissions.count)")
+        } catch {
+            print("[FeedbackSubmissions] load failed error=\(error.localizedDescription)")
+            loadError = error.localizedDescription
+        }
+    }
+}
+
+private struct FeedbackComposerField: View {
+    @Binding var text: String
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Text("Tell us what went wrong or suggest an improvement")
+                    .font(.critic(.body))
+                    .foregroundColor(CriticPalette.onSurfaceMuted)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 16)
+            }
+
+            TextEditor(text: $text)
+                .font(.critic(.body))
+                .foregroundColor(CriticPalette.onSurface)
+                .modifier(ScrollBGHider())
+                .frame(minHeight: 164)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(CriticPalette.surface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(CriticPalette.outline, lineWidth: 1)
+                )
+        )
+    }
+}
+
+private struct FeedbackSubmissionRow: View {
+    let submission: FeedbackSubmission
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Text(submission.statusText)
+                    .font(.critic(.sectionHeader))
+                    .foregroundColor(CriticPalette.onSurface)
+
+                Spacer(minLength: 8)
+
+                Text(formattedDate(submission.createdAt))
+                    .font(.critic(.body))
+                    .foregroundColor(CriticPalette.onSurfaceMuted)
+            }
+
+            Text(submission.messageText)
+                .font(.critic(.body))
+                .foregroundColor(CriticPalette.onSurface)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
+        .criticCard()
+    }
+
+    private func formattedDate(_ rawValue: String?) -> String {
+        guard let rawValue else { return "Submitted" }
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = iso.date(from: rawValue) ?? ISO8601DateFormatter().date(from: rawValue) {
+            let formatter = DateFormatter()
+            formatter.locale = .current
+            formatter.timeZone = .current
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .none
+            return formatter.string(from: date)
+        }
+        return rawValue
     }
 }
 
@@ -886,32 +1726,65 @@ struct PrivacyVisibilityView: View {
     @AppStorage("visibility_discover_by_email") private var discoverByEmail: Bool = true
 
     var body: some View {
-        List {
-            Section(header: Text("Show on your profile")) {
-                Toggle("Name", isOn: $showName)
-                Toggle("Profile picture", isOn: $showProfilePic)
-                Toggle("Gender", isOn: $showGender)
+        VStack(spacing: 16) {
+            CriticDetailHeader(title: "Privacy & Visibility") {
+                dismiss()
             }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
 
-            Section {
-                Toggle("Allow discovery by phone", isOn: $discoverByPhone)
-                Toggle("Allow discovery by email", isOn: $discoverByEmail)
-            } header: {
-                Text("Let others find you")
-            } footer: {
-                Text("If enabled, people who have your contact may find you on Critic. We never show contact details.")
-            }
-        }
-        .listStyle(.insetGrouped)
-        .navigationTitle("Privacy & Visibility")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button("Save") {
-                    dismiss()
+            List {
+                Section {
+                    Toggle(isOn: $showName) {
+                        Text("Name")
+                            .font(.critic(.listTitle))
+                            .foregroundColor(CriticPalette.onSurface)
+                    }
+                    Toggle(isOn: $showProfilePic) {
+                        Text("Profile picture")
+                            .font(.critic(.listTitle))
+                            .foregroundColor(CriticPalette.onSurface)
+                    }
+                    Toggle(isOn: $showGender) {
+                        Text("Gender")
+                            .font(.critic(.listTitle))
+                            .foregroundColor(CriticPalette.onSurface)
+                    }
+                } header: {
+                    Text("Show on your profile")
+                        .font(.critic(.sectionHeader))
+                        .foregroundColor(CriticPalette.onSurfaceMuted)
+                }
+
+                Section {
+                    Toggle(isOn: $discoverByPhone) {
+                        Text("Allow discovery by phone")
+                            .font(.critic(.listTitle))
+                            .foregroundColor(CriticPalette.onSurface)
+                    }
+                    Toggle(isOn: $discoverByEmail) {
+                        Text("Allow discovery by email")
+                            .font(.critic(.listTitle))
+                            .foregroundColor(CriticPalette.onSurface)
+                    }
+                } header: {
+                    Text("Let others find you")
+                        .font(.critic(.sectionHeader))
+                        .foregroundColor(CriticPalette.onSurfaceMuted)
+                } footer: {
+                    Text("If enabled, people who have your contact may find you on Critic. We never show contact details.")
+                        .font(.critic(.body))
+                        .foregroundColor(CriticPalette.onSurfaceMuted)
                 }
             }
+            .modifier(ScrollBGHider())
+            .listStyle(.insetGrouped)
+            .tint(CriticPalette.primary)
         }
+        .background(CriticPalette.background.ignoresSafeArea())
+        .environment(\.colorScheme, .light)
+        .navigationBarBackButtonHidden(true)
+        .navigationBarHidden(true)
     }
 }
 
