@@ -13,6 +13,7 @@ enum AppConfig {
     static let wsURL = AppEndpoints.Realtime.webSocket
 
     /// Optional headers for custom authorizers (API key / Cognito JWT / etc.)
+    /// minor changes
     static var wsHeaders: [String: String] {
         let headers: [String: String] = [:]
         // Example (Cognito):
