@@ -1,0 +1,547 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     '/Users/rayapudi/Library/Caches/org.carthage.CarthageKit/DerivedData/16.4_16F6/AppAuth-iOS/145104f5ea9d58ae21b60add007c33c1cc0c948e/Build/Intermediates.noindex/ArchiveIntermediates/AppAuth_iOS/BuildProductsPath/Release-iphoneos/AppAuth.framework/AppAuth'
+relocations:
+  - { offset: 0x5CD3F, size: 0x8, addend: 0x0, symName: _AppAuthVersionString, symObjAddr: 0x0, symBinAddr: 0x16460, symSize: 0x0 }
+  - { offset: 0x5CD74, size: 0x8, addend: 0x0, symName: _AppAuthVersionNumber, symObjAddr: 0x28, symBinAddr: 0x16488, symSize: 0x0 }
+  - { offset: 0x5CDB1, size: 0x8, addend: 0x0, symName: '-[OIDExternalUserAgentIOS init]', symObjAddr: 0x0, symBinAddr: 0x4000, symSize: 0x8 }
+  - { offset: 0x5CE64, size: 0x8, addend: 0x0, symName: '-[OIDExternalUserAgentIOS init]', symObjAddr: 0x0, symBinAddr: 0x4000, symSize: 0x8 }
+  - { offset: 0x5CE99, size: 0x8, addend: 0x0, symName: '-[OIDExternalUserAgentIOS initWithPresentingViewController:]', symObjAddr: 0x8, symBinAddr: 0x4008, symSize: 0x78 }
+  - { offset: 0x5CEE0, size: 0x8, addend: 0x0, symName: '-[OIDExternalUserAgentIOS initWithPresentingViewController:prefersEphemeralSession:]', symObjAddr: 0x80, symBinAddr: 0x4080, symSize: 0x28 }
+  - { offset: 0x5CF35, size: 0x8, addend: 0x0, symName: '-[OIDExternalUserAgentIOS presentExternalUserAgentRequest:session:]', symObjAddr: 0xA8, symBinAddr: 0x40A8, symSize: 0x200 }
+  - { offset: 0x5CFFE, size: 0x8, addend: 0x0, symName: '___67-[OIDExternalUserAgentIOS presentExternalUserAgentRequest:session:]_block_invoke', symObjAddr: 0x2A8, symBinAddr: 0x42A8, symSize: 0xDC }
+  - { offset: 0x5D097, size: 0x8, addend: 0x0, symName: ___copy_helper_block_e8_32w, symObjAddr: 0x384, symBinAddr: 0x4384, symSize: 0xC }
+  - { offset: 0x5D0C0, size: 0x8, addend: 0x0, symName: ___destroy_helper_block_e8_32w, symObjAddr: 0x390, symBinAddr: 0x4390, symSize: 0x8 }
+  - { offset: 0x5D0DF, size: 0x8, addend: 0x0, symName: '-[OIDExternalUserAgentIOS dismissExternalUserAgentAnimated:completion:]', symObjAddr: 0x398, symBinAddr: 0x4398, symSize: 0xB4 }
+  - { offset: 0x5D172, size: 0x8, addend: 0x0, symName: '-[OIDExternalUserAgentIOS cleanUp]', symObjAddr: 0x44C, symBinAddr: 0x444C, symSize: 0x44 }
+  - { offset: 0x5D1A5, size: 0x8, addend: 0x0, symName: '-[OIDExternalUserAgentIOS safariViewControllerDidFinish:]', symObjAddr: 0x490, symBinAddr: 0x4490, symSize: 0xC4 }
+  - { offset: 0x5D208, size: 0x8, addend: 0x0, symName: '-[OIDExternalUserAgentIOS presentationAnchorForWebAuthenticationSession:]', symObjAddr: 0x554, symBinAddr: 0x4554, symSize: 0x48 }
+  - { offset: 0x5D24B, size: 0x8, addend: 0x0, symName: '-[OIDExternalUserAgentIOS .cxx_destruct]', symObjAddr: 0x59C, symBinAddr: 0x459C, symSize: 0x40 }
+  - { offset: 0x5D47F, size: 0x8, addend: 0x0, symName: '-[OIDFieldMapping init]', symObjAddr: 0x0, symBinAddr: 0x45DC, symSize: 0xA4 }
+  - { offset: 0x5D5AD, size: 0x8, addend: 0x0, symName: '-[OIDFieldMapping init]', symObjAddr: 0x0, symBinAddr: 0x45DC, symSize: 0xA4 }
+  - { offset: 0x5D63F, size: 0x8, addend: 0x0, symName: '-[OIDFieldMapping initWithName:type:]', symObjAddr: 0xA4, symBinAddr: 0x4680, symSize: 0x8 }
+  - { offset: 0x5D690, size: 0x8, addend: 0x0, symName: '-[OIDFieldMapping initWithName:type:conversion:]', symObjAddr: 0xAC, symBinAddr: 0x4688, symSize: 0xC0 }
+  - { offset: 0x5D6F7, size: 0x8, addend: 0x0, symName: '+[OIDFieldMapping remainingParametersWithMap:parameters:instance:]', symObjAddr: 0x16C, symBinAddr: 0x4748, symSize: 0x260 }
+  - { offset: 0x5D7C4, size: 0x8, addend: 0x0, symName: '+[OIDFieldMapping encodeWithCoder:map:instance:]', symObjAddr: 0x3CC, symBinAddr: 0x49A8, symSize: 0x194 }
+  - { offset: 0x5D857, size: 0x8, addend: 0x0, symName: '+[OIDFieldMapping decodeWithCoder:map:instance:]', symObjAddr: 0x560, symBinAddr: 0x4B3C, symSize: 0x1A0 }
+  - { offset: 0x5D8FC, size: 0x8, addend: 0x0, symName: '+[OIDFieldMapping JSONTypes]', symObjAddr: 0x700, symBinAddr: 0x4CDC, symSize: 0xD4 }
+  - { offset: 0x5D92F, size: 0x8, addend: 0x0, symName: '+[OIDFieldMapping URLConversion]', symObjAddr: 0x7D4, symBinAddr: 0x4DB0, symSize: 0xC }
+  - { offset: 0x5D962, size: 0x8, addend: 0x0, symName: '___32+[OIDFieldMapping URLConversion]_block_invoke', symObjAddr: 0x7E0, symBinAddr: 0x4DBC, symSize: 0x74 }
+  - { offset: 0x5D99D, size: 0x8, addend: 0x0, symName: '+[OIDFieldMapping dateSinceNowConversion]', symObjAddr: 0x854, symBinAddr: 0x4E30, symSize: 0xC }
+  - { offset: 0x5D9D0, size: 0x8, addend: 0x0, symName: '___41+[OIDFieldMapping dateSinceNowConversion]_block_invoke', symObjAddr: 0x860, symBinAddr: 0x4E3C, symSize: 0x80 }
+  - { offset: 0x5DA26, size: 0x8, addend: 0x0, symName: '+[OIDFieldMapping dateEpochConversion]', symObjAddr: 0x8E0, symBinAddr: 0x4EBC, symSize: 0xC }
+  - { offset: 0x5DA59, size: 0x8, addend: 0x0, symName: '___38+[OIDFieldMapping dateEpochConversion]_block_invoke', symObjAddr: 0x8EC, symBinAddr: 0x4EC8, symSize: 0x80 }
+  - { offset: 0x5DAAF, size: 0x8, addend: 0x0, symName: '-[OIDFieldMapping name]', symObjAddr: 0x96C, symBinAddr: 0x4F48, symSize: 0x8 }
+  - { offset: 0x5DAE6, size: 0x8, addend: 0x0, symName: '-[OIDFieldMapping expectedType]', symObjAddr: 0x974, symBinAddr: 0x4F50, symSize: 0x8 }
+  - { offset: 0x5DB1D, size: 0x8, addend: 0x0, symName: '-[OIDFieldMapping conversion]', symObjAddr: 0x97C, symBinAddr: 0x4F58, symSize: 0x8 }
+  - { offset: 0x5DB54, size: 0x8, addend: 0x0, symName: '-[OIDFieldMapping .cxx_destruct]', symObjAddr: 0x984, symBinAddr: 0x4F60, symSize: 0x3C }
+  - { offset: 0x5DCFC, size: 0x8, addend: 0x0, symName: '-[OIDIDToken initWithIDTokenString:]', symObjAddr: 0x0, symBinAddr: 0x4F9C, symSize: 0x1D0 }
+  - { offset: 0x5DD0F, size: 0x8, addend: 0x0, symName: '+[OIDIDToken fieldMap]', symObjAddr: 0x1D0, symBinAddr: 0x516C, symSize: 0x30 }
+  - { offset: 0x5DD39, size: 0x8, addend: 0x0, symName: _fieldMap.fieldMap, symObjAddr: 0x40D8, symBinAddr: 0x29188, symSize: 0x0 }
+  - { offset: 0x5DD4F, size: 0x8, addend: 0x0, symName: _fieldMap.onceToken, symObjAddr: 0x40E0, symBinAddr: 0x29190, symSize: 0x0 }
+  - { offset: 0x5DE8A, size: 0x8, addend: 0x0, symName: '-[OIDIDToken initWithIDTokenString:]', symObjAddr: 0x0, symBinAddr: 0x4F9C, symSize: 0x1D0 }
+  - { offset: 0x5DF1D, size: 0x8, addend: 0x0, symName: '+[OIDIDToken fieldMap].cold.1', symObjAddr: 0x8B8, symBinAddr: 0x13F5C, symSize: 0x14 }
+  - { offset: 0x5DF39, size: 0x8, addend: 0x0, symName: '+[OIDIDToken fieldMap].cold.1', symObjAddr: 0x8B8, symBinAddr: 0x13F5C, symSize: 0x14 }
+  - { offset: 0x5DF4B, size: 0x8, addend: 0x0, symName: '___22+[OIDIDToken fieldMap]_block_invoke', symObjAddr: 0x200, symBinAddr: 0x519C, symSize: 0x24C }
+  - { offset: 0x5DF72, size: 0x8, addend: 0x0, symName: '___22+[OIDIDToken fieldMap]_block_invoke_2', symObjAddr: 0x44C, symBinAddr: 0x53E8, symSize: 0xD0 }
+  - { offset: 0x5DFAD, size: 0x8, addend: 0x0, symName: '___22+[OIDIDToken fieldMap]_block_invoke_3', symObjAddr: 0x51C, symBinAddr: 0x54B8, symSize: 0x80 }
+  - { offset: 0x5E003, size: 0x8, addend: 0x0, symName: '___22+[OIDIDToken fieldMap]_block_invoke_4', symObjAddr: 0x59C, symBinAddr: 0x5538, symSize: 0x80 }
+  - { offset: 0x5E059, size: 0x8, addend: 0x0, symName: '+[OIDIDToken parseJWTSection:]', symObjAddr: 0x61C, symBinAddr: 0x55B8, symSize: 0xF8 }
+  - { offset: 0x5E0EE, size: 0x8, addend: 0x0, symName: '+[OIDIDToken base64urlNoPaddingDecode:]', symObjAddr: 0x714, symBinAddr: 0x56B0, symSize: 0xEC }
+  - { offset: 0x5E15D, size: 0x8, addend: 0x0, symName: '-[OIDIDToken header]', symObjAddr: 0x800, symBinAddr: 0x579C, symSize: 0x8 }
+  - { offset: 0x5E194, size: 0x8, addend: 0x0, symName: '-[OIDIDToken claims]', symObjAddr: 0x808, symBinAddr: 0x57A4, symSize: 0x8 }
+  - { offset: 0x5E1CB, size: 0x8, addend: 0x0, symName: '-[OIDIDToken issuer]', symObjAddr: 0x810, symBinAddr: 0x57AC, symSize: 0x8 }
+  - { offset: 0x5E202, size: 0x8, addend: 0x0, symName: '-[OIDIDToken subject]', symObjAddr: 0x818, symBinAddr: 0x57B4, symSize: 0x8 }
+  - { offset: 0x5E239, size: 0x8, addend: 0x0, symName: '-[OIDIDToken audience]', symObjAddr: 0x820, symBinAddr: 0x57BC, symSize: 0x8 }
+  - { offset: 0x5E270, size: 0x8, addend: 0x0, symName: '-[OIDIDToken expiresAt]', symObjAddr: 0x828, symBinAddr: 0x57C4, symSize: 0x8 }
+  - { offset: 0x5E2A7, size: 0x8, addend: 0x0, symName: '-[OIDIDToken issuedAt]', symObjAddr: 0x830, symBinAddr: 0x57CC, symSize: 0x8 }
+  - { offset: 0x5E2DE, size: 0x8, addend: 0x0, symName: '-[OIDIDToken nonce]', symObjAddr: 0x838, symBinAddr: 0x57D4, symSize: 0x8 }
+  - { offset: 0x5E315, size: 0x8, addend: 0x0, symName: '-[OIDIDToken .cxx_destruct]', symObjAddr: 0x840, symBinAddr: 0x57DC, symSize: 0x78 }
+  - { offset: 0x5E55C, size: 0x8, addend: 0x0, symName: '+[OIDExternalUserAgentIOSCustomBrowser CustomBrowserChrome]', symObjAddr: 0x0, symBinAddr: 0x5854, symSize: 0xA0 }
+  - { offset: 0x5E658, size: 0x8, addend: 0x0, symName: '+[OIDExternalUserAgentIOSCustomBrowser CustomBrowserChrome]', symObjAddr: 0x0, symBinAddr: 0x5854, symSize: 0xA0 }
+  - { offset: 0x5E6AF, size: 0x8, addend: 0x0, symName: '+[OIDExternalUserAgentIOSCustomBrowser CustomBrowserFirefox]', symObjAddr: 0xA0, symBinAddr: 0x58F4, symSize: 0x98 }
+  - { offset: 0x5E706, size: 0x8, addend: 0x0, symName: '+[OIDExternalUserAgentIOSCustomBrowser CustomBrowserOpera]', symObjAddr: 0x138, symBinAddr: 0x598C, symSize: 0xA0 }
+  - { offset: 0x5E75D, size: 0x8, addend: 0x0, symName: '+[OIDExternalUserAgentIOSCustomBrowser CustomBrowserSafari]', symObjAddr: 0x1D8, symBinAddr: 0x5A2C, symSize: 0x24 }
+  - { offset: 0x5E7B4, size: 0x8, addend: 0x0, symName: '___59+[OIDExternalUserAgentIOSCustomBrowser CustomBrowserSafari]_block_invoke', symObjAddr: 0x1FC, symBinAddr: 0x5A50, symSize: 0x8 }
+  - { offset: 0x5E7D2, size: 0x8, addend: 0x0, symName: '+[OIDExternalUserAgentIOSCustomBrowser URLTransformationSchemeSubstitutionHTTPS:HTTP:]', symObjAddr: 0x204, symBinAddr: 0x5A58, symSize: 0xC4 }
+  - { offset: 0x5E835, size: 0x8, addend: 0x0, symName: '___86+[OIDExternalUserAgentIOSCustomBrowser URLTransformationSchemeSubstitutionHTTPS:HTTP:]_block_invoke', symObjAddr: 0x2C8, symBinAddr: 0x5B1C, symSize: 0x10C }
+  - { offset: 0x5E8C3, size: 0x8, addend: 0x0, symName: ___copy_helper_block_e8_32s40s, symObjAddr: 0x3D4, symBinAddr: 0x5C28, symSize: 0x28 }
+  - { offset: 0x5E8EC, size: 0x8, addend: 0x0, symName: ___destroy_helper_block_e8_32s40s, symObjAddr: 0x3FC, symBinAddr: 0x5C50, symSize: 0x28 }
+  - { offset: 0x5E90B, size: 0x8, addend: 0x0, symName: '+[OIDExternalUserAgentIOSCustomBrowser URLTransformationSchemeConcatPrefix:]', symObjAddr: 0x424, symBinAddr: 0x5C78, symSize: 0x98 }
+  - { offset: 0x5E95E, size: 0x8, addend: 0x0, symName: '___76+[OIDExternalUserAgentIOSCustomBrowser URLTransformationSchemeConcatPrefix:]_block_invoke', symObjAddr: 0x4BC, symBinAddr: 0x5D10, symSize: 0xE0 }
+  - { offset: 0x5E9FC, size: 0x8, addend: 0x0, symName: ___copy_helper_block_e8_32s, symObjAddr: 0x59C, symBinAddr: 0x5DF0, symSize: 0x8 }
+  - { offset: 0x5EA23, size: 0x8, addend: 0x0, symName: ___destroy_helper_block_e8_32s, symObjAddr: 0x5A4, symBinAddr: 0x5DF8, symSize: 0x8 }
+  - { offset: 0x5EA42, size: 0x8, addend: 0x0, symName: '-[OIDExternalUserAgentIOSCustomBrowser initWithURLTransformation:]', symObjAddr: 0x5AC, symBinAddr: 0x5E00, symSize: 0xC }
+  - { offset: 0x5EA85, size: 0x8, addend: 0x0, symName: '-[OIDExternalUserAgentIOSCustomBrowser initWithURLTransformation:canOpenURLScheme:appStoreURL:]', symObjAddr: 0x5B8, symBinAddr: 0x5E0C, symSize: 0xD0 }
+  - { offset: 0x5EAEC, size: 0x8, addend: 0x0, symName: '-[OIDExternalUserAgentIOSCustomBrowser presentExternalUserAgentRequest:session:]', symObjAddr: 0x688, symBinAddr: 0x5EDC, symSize: 0x228 }
+  - { offset: 0x5EBAA, size: 0x8, addend: 0x0, symName: '-[OIDExternalUserAgentIOSCustomBrowser dismissExternalUserAgentAnimated:completion:]', symObjAddr: 0x8B0, symBinAddr: 0x6104, symSize: 0xC }
+  - { offset: 0x5EC0A, size: 0x8, addend: 0x0, symName: '-[OIDExternalUserAgentIOSCustomBrowser URLTransformation]', symObjAddr: 0x8BC, symBinAddr: 0x6110, symSize: 0x8 }
+  - { offset: 0x5EC41, size: 0x8, addend: 0x0, symName: '-[OIDExternalUserAgentIOSCustomBrowser canOpenURLScheme]', symObjAddr: 0x8C4, symBinAddr: 0x6118, symSize: 0x8 }
+  - { offset: 0x5EC78, size: 0x8, addend: 0x0, symName: '-[OIDExternalUserAgentIOSCustomBrowser appStoreURL]', symObjAddr: 0x8CC, symBinAddr: 0x6120, symSize: 0x8 }
+  - { offset: 0x5ECAF, size: 0x8, addend: 0x0, symName: '-[OIDExternalUserAgentIOSCustomBrowser .cxx_destruct]', symObjAddr: 0x8D4, symBinAddr: 0x6128, symSize: 0x3C }
+  - { offset: 0x5EF48, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionResponse init]', symObjAddr: 0x0, symBinAddr: 0x6164, symSize: 0xA4 }
+  - { offset: 0x5EF5B, size: 0x8, addend: 0x0, symName: '+[OIDEndSessionResponse fieldMap]', symObjAddr: 0x198, symBinAddr: 0x62FC, symSize: 0x30 }
+  - { offset: 0x5EF85, size: 0x8, addend: 0x0, symName: _fieldMap.fieldMap, symObjAddr: 0x37B0, symBinAddr: 0x29198, symSize: 0x0 }
+  - { offset: 0x5EF9B, size: 0x8, addend: 0x0, symName: _fieldMap.onceToken, symObjAddr: 0x37B8, symBinAddr: 0x291A0, symSize: 0x0 }
+  - { offset: 0x5F0AB, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionResponse init]', symObjAddr: 0x0, symBinAddr: 0x6164, symSize: 0xA4 }
+  - { offset: 0x5F13D, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionResponse initWithRequest:parameters:]', symObjAddr: 0xA4, symBinAddr: 0x6208, symSize: 0xF4 }
+  - { offset: 0x5F1EE, size: 0x8, addend: 0x0, symName: '+[OIDEndSessionResponse fieldMap].cold.1', symObjAddr: 0x4EC, symBinAddr: 0x13F70, symSize: 0x14 }
+  - { offset: 0x5F20A, size: 0x8, addend: 0x0, symName: '+[OIDEndSessionResponse fieldMap].cold.1', symObjAddr: 0x4EC, symBinAddr: 0x13F70, symSize: 0x14 }
+  - { offset: 0x5F21C, size: 0x8, addend: 0x0, symName: '___33+[OIDEndSessionResponse fieldMap]_block_invoke', symObjAddr: 0x1C8, symBinAddr: 0x632C, symSize: 0x8C }
+  - { offset: 0x5F243, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionResponse copyWithZone:]', symObjAddr: 0x254, symBinAddr: 0x63B8, symSize: 0x4 }
+  - { offset: 0x5F284, size: 0x8, addend: 0x0, symName: '+[OIDEndSessionResponse supportsSecureCoding]', symObjAddr: 0x258, symBinAddr: 0x63BC, symSize: 0x8 }
+  - { offset: 0x5F2B7, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionResponse initWithCoder:]', symObjAddr: 0x260, symBinAddr: 0x63C4, symSize: 0x11C }
+  - { offset: 0x5F30E, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionResponse encodeWithCoder:]', symObjAddr: 0x37C, symBinAddr: 0x64E0, symSize: 0x98 }
+  - { offset: 0x5F351, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionResponse description]', symObjAddr: 0x414, symBinAddr: 0x6578, symSize: 0x84 }
+  - { offset: 0x5F3BC, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionResponse request]', symObjAddr: 0x498, symBinAddr: 0x65FC, symSize: 0x8 }
+  - { offset: 0x5F3F3, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionResponse state]', symObjAddr: 0x4A0, symBinAddr: 0x6604, symSize: 0x8 }
+  - { offset: 0x5F42A, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionResponse additionalParameters]', symObjAddr: 0x4A8, symBinAddr: 0x660C, symSize: 0x8 }
+  - { offset: 0x5F461, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionResponse .cxx_destruct]', symObjAddr: 0x4B0, symBinAddr: 0x6614, symSize: 0x3C }
+  - { offset: 0x5F57D, size: 0x8, addend: 0x0, symName: '-[OIDAuthStatePendingAction initWithAction:andDispatchQueue:]', symObjAddr: 0x0, symBinAddr: 0x6650, symSize: 0xA4 }
+  - { offset: 0x5FAEF, size: 0x8, addend: 0x0, symName: '-[OIDAuthStatePendingAction initWithAction:andDispatchQueue:]', symObjAddr: 0x0, symBinAddr: 0x6650, symSize: 0xA4 }
+  - { offset: 0x5FB46, size: 0x8, addend: 0x0, symName: '-[OIDAuthStatePendingAction action]', symObjAddr: 0xA4, symBinAddr: 0x66F4, symSize: 0x8 }
+  - { offset: 0x5FB7D, size: 0x8, addend: 0x0, symName: '-[OIDAuthStatePendingAction dispatchQueue]', symObjAddr: 0xAC, symBinAddr: 0x66FC, symSize: 0x8 }
+  - { offset: 0x5FBB4, size: 0x8, addend: 0x0, symName: '-[OIDAuthStatePendingAction .cxx_destruct]', symObjAddr: 0xB4, symBinAddr: 0x6704, symSize: 0x30 }
+  - { offset: 0x5FBE7, size: 0x8, addend: 0x0, symName: '+[OIDAuthState authStateByPresentingAuthorizationRequest:externalUserAgent:callback:]', symObjAddr: 0xE4, symBinAddr: 0x6734, symSize: 0xD4 }
+  - { offset: 0x5FC5A, size: 0x8, addend: 0x0, symName: '___85+[OIDAuthState authStateByPresentingAuthorizationRequest:externalUserAgent:callback:]_block_invoke', symObjAddr: 0x1B8, symBinAddr: 0x6808, symSize: 0x170 }
+  - { offset: 0x5FD38, size: 0x8, addend: 0x0, symName: '___85+[OIDAuthState authStateByPresentingAuthorizationRequest:externalUserAgent:callback:]_block_invoke_2', symObjAddr: 0x328, symBinAddr: 0x6978, symSize: 0x94 }
+  - { offset: 0x5FDDD, size: 0x8, addend: 0x0, symName: ___copy_helper_block_e8_32s40b, symObjAddr: 0x3BC, symBinAddr: 0x6A0C, symSize: 0x34 }
+  - { offset: 0x5FE06, size: 0x8, addend: 0x0, symName: '-[OIDAuthState init]', symObjAddr: 0x418, symBinAddr: 0x6A40, symSize: 0xA4 }
+  - { offset: 0x5FE98, size: 0x8, addend: 0x0, symName: '-[OIDAuthState initWithAuthorizationResponse:]', symObjAddr: 0x4BC, symBinAddr: 0x6AE4, symSize: 0x8 }
+  - { offset: 0x5FEDB, size: 0x8, addend: 0x0, symName: '-[OIDAuthState initWithAuthorizationResponse:tokenResponse:]', symObjAddr: 0x4C4, symBinAddr: 0x6AEC, symSize: 0x8 }
+  - { offset: 0x5FF2C, size: 0x8, addend: 0x0, symName: '-[OIDAuthState initWithRegistrationResponse:]', symObjAddr: 0x4CC, symBinAddr: 0x6AF4, symSize: 0x10 }
+  - { offset: 0x5FF73, size: 0x8, addend: 0x0, symName: '-[OIDAuthState initWithAuthorizationResponse:tokenResponse:registrationResponse:]', symObjAddr: 0x4DC, symBinAddr: 0x6B04, symSize: 0xF0 }
+  - { offset: 0x5FFDA, size: 0x8, addend: 0x0, symName: '-[OIDAuthState description]', symObjAddr: 0x5CC, symBinAddr: 0x6BF4, symSize: 0x190 }
+  - { offset: 0x6003B, size: 0x8, addend: 0x0, symName: '+[OIDAuthState supportsSecureCoding]', symObjAddr: 0x75C, symBinAddr: 0x6D84, symSize: 0x8 }
+  - { offset: 0x6006E, size: 0x8, addend: 0x0, symName: '-[OIDAuthState initWithCoder:]', symObjAddr: 0x764, symBinAddr: 0x6D8C, symSize: 0x178 }
+  - { offset: 0x600B7, size: 0x8, addend: 0x0, symName: '-[OIDAuthState encodeWithCoder:]', symObjAddr: 0x8DC, symBinAddr: 0x6F04, symSize: 0x100 }
+  - { offset: 0x6011C, size: 0x8, addend: 0x0, symName: '-[OIDAuthState accessToken]', symObjAddr: 0x9DC, symBinAddr: 0x7004, symSize: 0x40 }
+  - { offset: 0x60154, size: 0x8, addend: 0x0, symName: '-[OIDAuthState tokenType]', symObjAddr: 0xA1C, symBinAddr: 0x7044, symSize: 0x40 }
+  - { offset: 0x6018C, size: 0x8, addend: 0x0, symName: '-[OIDAuthState accessTokenExpirationDate]', symObjAddr: 0xA5C, symBinAddr: 0x7084, symSize: 0x40 }
+  - { offset: 0x601C4, size: 0x8, addend: 0x0, symName: '-[OIDAuthState idToken]', symObjAddr: 0xA9C, symBinAddr: 0x70C4, symSize: 0x40 }
+  - { offset: 0x601FC, size: 0x8, addend: 0x0, symName: '-[OIDAuthState isAuthorized]', symObjAddr: 0xADC, symBinAddr: 0x7104, symSize: 0xB8 }
+  - { offset: 0x60234, size: 0x8, addend: 0x0, symName: '-[OIDAuthState updateWithRegistrationResponse:]', symObjAddr: 0xB94, symBinAddr: 0x71BC, symSize: 0x80 }
+  - { offset: 0x60279, size: 0x8, addend: 0x0, symName: '-[OIDAuthState updateWithAuthorizationResponse:error:]', symObjAddr: 0xC14, symBinAddr: 0x723C, symSize: 0x140 }
+  - { offset: 0x602CF, size: 0x8, addend: 0x0, symName: '-[OIDAuthState updateWithTokenResponse:error:]', symObjAddr: 0xD54, symBinAddr: 0x737C, symSize: 0x150 }
+  - { offset: 0x60343, size: 0x8, addend: 0x0, symName: '-[OIDAuthState updateWithAuthorizationError:]', symObjAddr: 0xEA4, symBinAddr: 0x74CC, symSize: 0x6C }
+  - { offset: 0x60388, size: 0x8, addend: 0x0, symName: '-[OIDAuthState tokenRefreshRequest]', symObjAddr: 0xF10, symBinAddr: 0x7538, symSize: 0x8 }
+  - { offset: 0x603BE, size: 0x8, addend: 0x0, symName: '-[OIDAuthState tokenRefreshRequestWithAdditionalParameters:]', symObjAddr: 0xF18, symBinAddr: 0x7540, symSize: 0x164 }
+  - { offset: 0x60407, size: 0x8, addend: 0x0, symName: '-[OIDAuthState tokenRefreshRequestWithAdditionalParameters:additionalHeaders:]', symObjAddr: 0x107C, symBinAddr: 0x76A4, symSize: 0x17C }
+  - { offset: 0x60461, size: 0x8, addend: 0x0, symName: '-[OIDAuthState tokenRefreshRequestWithAdditionalHeaders:]', symObjAddr: 0x11F8, symBinAddr: 0x7820, symSize: 0x164 }
+  - { offset: 0x604AA, size: 0x8, addend: 0x0, symName: '-[OIDAuthState didChangeState]', symObjAddr: 0x135C, symBinAddr: 0x7984, symSize: 0x34 }
+  - { offset: 0x604DE, size: 0x8, addend: 0x0, symName: '-[OIDAuthState setNeedsTokenRefresh]', symObjAddr: 0x1390, symBinAddr: 0x79B8, symSize: 0xC }
+  - { offset: 0x60510, size: 0x8, addend: 0x0, symName: '-[OIDAuthState performActionWithFreshTokens:]', symObjAddr: 0x139C, symBinAddr: 0x79C4, symSize: 0x8 }
+  - { offset: 0x60551, size: 0x8, addend: 0x0, symName: '-[OIDAuthState performActionWithFreshTokens:additionalRefreshParameters:]', symObjAddr: 0x13A4, symBinAddr: 0x79CC, symSize: 0xC }
+  - { offset: 0x605A1, size: 0x8, addend: 0x0, symName: '-[OIDAuthState performActionWithFreshTokens:additionalRefreshParameters:dispatchQueue:]', symObjAddr: 0x13B0, symBinAddr: 0x79D8, symSize: 0x264 }
+  - { offset: 0x6069E, size: 0x8, addend: 0x0, symName: '___87-[OIDAuthState performActionWithFreshTokens:additionalRefreshParameters:dispatchQueue:]_block_invoke', symObjAddr: 0x1614, symBinAddr: 0x7C3C, symSize: 0x70 }
+  - { offset: 0x60719, size: 0x8, addend: 0x0, symName: '___87-[OIDAuthState performActionWithFreshTokens:additionalRefreshParameters:dispatchQueue:]_block_invoke.58', symObjAddr: 0x1684, symBinAddr: 0x7CAC, symSize: 0x18 }
+  - { offset: 0x60781, size: 0x8, addend: 0x0, symName: '___87-[OIDAuthState performActionWithFreshTokens:additionalRefreshParameters:dispatchQueue:]_block_invoke_2', symObjAddr: 0x169C, symBinAddr: 0x7CC4, symSize: 0x2B0 }
+  - { offset: 0x6083A, size: 0x8, addend: 0x0, symName: '___87-[OIDAuthState performActionWithFreshTokens:additionalRefreshParameters:dispatchQueue:]_block_invoke_3', symObjAddr: 0x194C, symBinAddr: 0x7F74, symSize: 0x8C }
+  - { offset: 0x608C0, size: 0x8, addend: 0x0, symName: ___copy_helper_block_e8_32s40s48s, symObjAddr: 0x19D8, symBinAddr: 0x8000, symSize: 0x30 }
+  - { offset: 0x608E9, size: 0x8, addend: 0x0, symName: ___destroy_helper_block_e8_32s40s48s, symObjAddr: 0x1A08, symBinAddr: 0x8030, symSize: 0x30 }
+  - { offset: 0x60908, size: 0x8, addend: 0x0, symName: '-[OIDAuthState isTokenFresh]', symObjAddr: 0x1A48, symBinAddr: 0x8060, symSize: 0x94 }
+  - { offset: 0x60951, size: 0x8, addend: 0x0, symName: '-[OIDAuthState refreshToken]', symObjAddr: 0x1ADC, symBinAddr: 0x80F4, symSize: 0x8 }
+  - { offset: 0x60988, size: 0x8, addend: 0x0, symName: '-[OIDAuthState scope]', symObjAddr: 0x1AE4, symBinAddr: 0x80FC, symSize: 0x8 }
+  - { offset: 0x609BF, size: 0x8, addend: 0x0, symName: '-[OIDAuthState lastAuthorizationResponse]', symObjAddr: 0x1AEC, symBinAddr: 0x8104, symSize: 0x8 }
+  - { offset: 0x609F6, size: 0x8, addend: 0x0, symName: '-[OIDAuthState lastTokenResponse]', symObjAddr: 0x1AF4, symBinAddr: 0x810C, symSize: 0x8 }
+  - { offset: 0x60A2D, size: 0x8, addend: 0x0, symName: '-[OIDAuthState lastRegistrationResponse]', symObjAddr: 0x1AFC, symBinAddr: 0x8114, symSize: 0x8 }
+  - { offset: 0x60A64, size: 0x8, addend: 0x0, symName: '-[OIDAuthState authorizationError]', symObjAddr: 0x1B04, symBinAddr: 0x811C, symSize: 0x8 }
+  - { offset: 0x60A9B, size: 0x8, addend: 0x0, symName: '-[OIDAuthState stateChangeDelegate]', symObjAddr: 0x1B0C, symBinAddr: 0x8124, symSize: 0x18 }
+  - { offset: 0x60AD2, size: 0x8, addend: 0x0, symName: '-[OIDAuthState setStateChangeDelegate:]', symObjAddr: 0x1B24, symBinAddr: 0x813C, symSize: 0xC }
+  - { offset: 0x60B13, size: 0x8, addend: 0x0, symName: '-[OIDAuthState errorDelegate]', symObjAddr: 0x1B30, symBinAddr: 0x8148, symSize: 0x18 }
+  - { offset: 0x60B4A, size: 0x8, addend: 0x0, symName: '-[OIDAuthState setErrorDelegate:]', symObjAddr: 0x1B48, symBinAddr: 0x8160, symSize: 0xC }
+  - { offset: 0x60B8B, size: 0x8, addend: 0x0, symName: '-[OIDAuthState .cxx_destruct]', symObjAddr: 0x1B54, symBinAddr: 0x816C, symSize: 0x88 }
+  - { offset: 0x60F6D, size: 0x8, addend: 0x0, symName: '+[OIDAuthState(IOS) authStateByPresentingAuthorizationRequest:presentingViewController:callback:]', symObjAddr: 0x0, symBinAddr: 0x81F4, symSize: 0xB8 }
+  - { offset: 0x60F80, size: 0x8, addend: 0x0, symName: '+[OIDAuthState(IOS) authStateByPresentingAuthorizationRequest:presentingViewController:callback:]', symObjAddr: 0x0, symBinAddr: 0x81F4, symSize: 0xB8 }
+  - { offset: 0x60FF7, size: 0x8, addend: 0x0, symName: '+[OIDAuthState(IOS) authStateByPresentingAuthorizationRequest:presentingViewController:prefersEphemeralSession:callback:]', symObjAddr: 0xB8, symBinAddr: 0x82AC, symSize: 0xC0 }
+  - { offset: 0x6107E, size: 0x8, addend: 0x0, symName: '+[OIDAuthState(IOS) authStateByPresentingAuthorizationRequest:callback:]', symObjAddr: 0x178, symBinAddr: 0x836C, symSize: 0x94 }
+  - { offset: 0x612F2, size: 0x8, addend: 0x0, symName: '+[OIDTokenResponse fieldMap]', symObjAddr: 0x0, symBinAddr: 0x8400, symSize: 0x30 }
+  - { offset: 0x61305, size: 0x8, addend: 0x0, symName: '+[OIDTokenResponse fieldMap]', symObjAddr: 0x0, symBinAddr: 0x8400, symSize: 0x30 }
+  - { offset: 0x6132F, size: 0x8, addend: 0x0, symName: _fieldMap.fieldMap, symObjAddr: 0x4628, symBinAddr: 0x291A8, symSize: 0x0 }
+  - { offset: 0x61345, size: 0x8, addend: 0x0, symName: _fieldMap.onceToken, symObjAddr: 0x4630, symBinAddr: 0x291B0, symSize: 0x0 }
+  - { offset: 0x61563, size: 0x8, addend: 0x0, symName: '+[OIDTokenResponse fieldMap].cold.1', symObjAddr: 0x774, symBinAddr: 0x13F84, symSize: 0x14 }
+  - { offset: 0x6157F, size: 0x8, addend: 0x0, symName: '+[OIDTokenResponse fieldMap].cold.1', symObjAddr: 0x774, symBinAddr: 0x13F84, symSize: 0x14 }
+  - { offset: 0x61591, size: 0x8, addend: 0x0, symName: '___28+[OIDTokenResponse fieldMap]_block_invoke', symObjAddr: 0x30, symBinAddr: 0x8430, symSize: 0x22C }
+  - { offset: 0x615B8, size: 0x8, addend: 0x0, symName: '-[OIDTokenResponse init]', symObjAddr: 0x25C, symBinAddr: 0x865C, symSize: 0xA4 }
+  - { offset: 0x6164A, size: 0x8, addend: 0x0, symName: '-[OIDTokenResponse initWithRequest:parameters:]', symObjAddr: 0x300, symBinAddr: 0x8700, symSize: 0xF4 }
+  - { offset: 0x616C0, size: 0x8, addend: 0x0, symName: '-[OIDTokenResponse copyWithZone:]', symObjAddr: 0x3F4, symBinAddr: 0x87F4, symSize: 0x4 }
+  - { offset: 0x61701, size: 0x8, addend: 0x0, symName: '+[OIDTokenResponse supportsSecureCoding]', symObjAddr: 0x3F8, symBinAddr: 0x87F8, symSize: 0x8 }
+  - { offset: 0x61734, size: 0x8, addend: 0x0, symName: '-[OIDTokenResponse initWithCoder:]', symObjAddr: 0x400, symBinAddr: 0x8800, symSize: 0x11C }
+  - { offset: 0x6178B, size: 0x8, addend: 0x0, symName: '-[OIDTokenResponse encodeWithCoder:]', symObjAddr: 0x51C, symBinAddr: 0x891C, symSize: 0x98 }
+  - { offset: 0x617CE, size: 0x8, addend: 0x0, symName: '-[OIDTokenResponse description]', symObjAddr: 0x5B4, symBinAddr: 0x89B4, symSize: 0x108 }
+  - { offset: 0x61839, size: 0x8, addend: 0x0, symName: '-[OIDTokenResponse request]', symObjAddr: 0x6BC, symBinAddr: 0x8ABC, symSize: 0x8 }
+  - { offset: 0x61870, size: 0x8, addend: 0x0, symName: '-[OIDTokenResponse accessToken]', symObjAddr: 0x6C4, symBinAddr: 0x8AC4, symSize: 0x8 }
+  - { offset: 0x618A7, size: 0x8, addend: 0x0, symName: '-[OIDTokenResponse accessTokenExpirationDate]', symObjAddr: 0x6CC, symBinAddr: 0x8ACC, symSize: 0x8 }
+  - { offset: 0x618DE, size: 0x8, addend: 0x0, symName: '-[OIDTokenResponse tokenType]', symObjAddr: 0x6D4, symBinAddr: 0x8AD4, symSize: 0x8 }
+  - { offset: 0x61915, size: 0x8, addend: 0x0, symName: '-[OIDTokenResponse idToken]', symObjAddr: 0x6DC, symBinAddr: 0x8ADC, symSize: 0x8 }
+  - { offset: 0x6194C, size: 0x8, addend: 0x0, symName: '-[OIDTokenResponse refreshToken]', symObjAddr: 0x6E4, symBinAddr: 0x8AE4, symSize: 0x8 }
+  - { offset: 0x61983, size: 0x8, addend: 0x0, symName: '-[OIDTokenResponse scope]', symObjAddr: 0x6EC, symBinAddr: 0x8AEC, symSize: 0x8 }
+  - { offset: 0x619BA, size: 0x8, addend: 0x0, symName: '-[OIDTokenResponse additionalParameters]', symObjAddr: 0x6F4, symBinAddr: 0x8AF4, symSize: 0x8 }
+  - { offset: 0x619F1, size: 0x8, addend: 0x0, symName: '-[OIDTokenResponse .cxx_destruct]', symObjAddr: 0x6FC, symBinAddr: 0x8AFC, symSize: 0x78 }
+  - { offset: 0x61B0D, size: 0x8, addend: 0x0, symName: '+[OIDErrorUtilities errorWithCode:underlyingError:description:]', symObjAddr: 0x0, symBinAddr: 0x8B74, symSize: 0xD8 }
+  - { offset: 0x61BE8, size: 0x8, addend: 0x0, symName: '+[OIDErrorUtilities errorWithCode:underlyingError:description:]', symObjAddr: 0x0, symBinAddr: 0x8B74, symSize: 0xD8 }
+  - { offset: 0x61C6B, size: 0x8, addend: 0x0, symName: '+[OIDErrorUtilities isOAuthErrorDomain:]', symObjAddr: 0xD8, symBinAddr: 0x8C4C, symSize: 0x44 }
+  - { offset: 0x61CAC, size: 0x8, addend: 0x0, symName: '+[OIDErrorUtilities resourceServerAuthorizationErrorWithCode:errorResponse:underlyingError:]', symObjAddr: 0x11C, symBinAddr: 0x8C90, symSize: 0xD8 }
+  - { offset: 0x61D2F, size: 0x8, addend: 0x0, symName: '+[OIDErrorUtilities OAuthErrorWithDomain:OAuthResponse:underlyingError:]', symObjAddr: 0x1F4, symBinAddr: 0x8D68, symSize: 0x3B4 }
+  - { offset: 0x61E06, size: 0x8, addend: 0x0, symName: '+[OIDErrorUtilities HTTPErrorWithHTTPResponse:data:]', symObjAddr: 0x5A8, symBinAddr: 0x911C, symSize: 0xF8 }
+  - { offset: 0x61E98, size: 0x8, addend: 0x0, symName: '+[OIDErrorUtilities OAuthErrorCodeFromString:]', symObjAddr: 0x6A0, symBinAddr: 0x9214, symSize: 0x2D4 }
+  - { offset: 0x61EFB, size: 0x8, addend: 0x0, symName: '+[OIDErrorUtilities raiseException:]', symObjAddr: 0x974, symBinAddr: 0x94E8, symSize: 0x40 }
+  - { offset: 0x61F3E, size: 0x8, addend: 0x0, symName: '+[OIDErrorUtilities raiseException:message:]', symObjAddr: 0x9B4, symBinAddr: 0x9528, symSize: 0x30 }
+  - { offset: 0x6202B, size: 0x8, addend: 0x0, symName: '-[OIDURLQueryComponent init]', symObjAddr: 0x0, symBinAddr: 0x9558, symSize: 0x6C }
+  - { offset: 0x62045, size: 0x8, addend: 0x0, symName: _gOIDURLQueryComponentForceIOS7Handling, symObjAddr: 0x43C5, symBinAddr: 0x29218, symSize: 0x0 }
+  - { offset: 0x620DF, size: 0x8, addend: 0x0, symName: '-[OIDURLQueryComponent init]', symObjAddr: 0x0, symBinAddr: 0x9558, symSize: 0x6C }
+  - { offset: 0x62116, size: 0x8, addend: 0x0, symName: '-[OIDURLQueryComponent initWithURL:]', symObjAddr: 0x6C, symBinAddr: 0x95C4, symSize: 0x3B4 }
+  - { offset: 0x62230, size: 0x8, addend: 0x0, symName: '-[OIDURLQueryComponent parameters]', symObjAddr: 0x420, symBinAddr: 0x9978, symSize: 0x8 }
+  - { offset: 0x62267, size: 0x8, addend: 0x0, symName: '-[OIDURLQueryComponent dictionaryValue]', symObjAddr: 0x428, symBinAddr: 0x9980, symSize: 0x1A8 }
+  - { offset: 0x622DC, size: 0x8, addend: 0x0, symName: '-[OIDURLQueryComponent valuesForParameter:]', symObjAddr: 0x5D0, symBinAddr: 0x9B28, symSize: 0x8 }
+  - { offset: 0x62321, size: 0x8, addend: 0x0, symName: '-[OIDURLQueryComponent addParameter:value:]', symObjAddr: 0x5D8, symBinAddr: 0x9B30, symSize: 0xA4 }
+  - { offset: 0x62384, size: 0x8, addend: 0x0, symName: '-[OIDURLQueryComponent addParameters:]', symObjAddr: 0x67C, symBinAddr: 0x9BD4, symSize: 0x144 }
+  - { offset: 0x623DE, size: 0x8, addend: 0x0, symName: '-[OIDURLQueryComponent queryItems]', symObjAddr: 0x7C0, symBinAddr: 0x9D18, symSize: 0x1F8 }
+  - { offset: 0x62489, size: 0x8, addend: 0x0, symName: '+[OIDURLQueryComponent URLParamValueAllowedCharacters]', symObjAddr: 0x9B8, symBinAddr: 0x9F10, symSize: 0x54 }
+  - { offset: 0x624CC, size: 0x8, addend: 0x0, symName: '-[OIDURLQueryComponent percentEncodedQueryString]', symObjAddr: 0xA0C, symBinAddr: 0x9F64, symSize: 0x28C }
+  - { offset: 0x625B7, size: 0x8, addend: 0x0, symName: '-[OIDURLQueryComponent URLEncodedParameters]', symObjAddr: 0xC98, symBinAddr: 0xA1F0, symSize: 0xCC }
+  - { offset: 0x6261D, size: 0x8, addend: 0x0, symName: '-[OIDURLQueryComponent URLByReplacingQueryInURL:]', symObjAddr: 0xD64, symBinAddr: 0xA2BC, symSize: 0x88 }
+  - { offset: 0x62694, size: 0x8, addend: 0x0, symName: '-[OIDURLQueryComponent description]', symObjAddr: 0xDEC, symBinAddr: 0xA344, symSize: 0x7C }
+  - { offset: 0x626FF, size: 0x8, addend: 0x0, symName: '-[OIDURLQueryComponent .cxx_destruct]', symObjAddr: 0xE68, symBinAddr: 0xA3C0, symSize: 0xC }
+  - { offset: 0x627C8, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationRequest init]', symObjAddr: 0x0, symBinAddr: 0xA3CC, symSize: 0xA4 }
+  - { offset: 0x627EC, size: 0x8, addend: 0x0, symName: _OIDOAuthorizationRequestCodeChallengeMethodS256, symObjAddr: 0x1450, symBinAddr: 0x20378, symSize: 0x0 }
+  - { offset: 0x629DB, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationRequest init]', symObjAddr: 0x0, symBinAddr: 0xA3CC, symSize: 0xA4 }
+  - { offset: 0x62A6D, size: 0x8, addend: 0x0, symName: '+[OIDAuthorizationRequest isSupportedResponseType:]', symObjAddr: 0xA4, symBinAddr: 0xA470, symSize: 0x160 }
+  - { offset: 0x62AD0, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationRequest initWithConfiguration:clientId:clientSecret:scope:redirectURL:responseType:state:nonce:codeVerifier:codeChallenge:codeChallengeMethod:additionalParameters:]', symObjAddr: 0x204, symBinAddr: 0xA5D0, symSize: 0x2E8 }
+  - { offset: 0x62BC1, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationRequest initWithConfiguration:clientId:clientSecret:scopes:redirectURL:responseType:additionalParameters:]', symObjAddr: 0x4EC, symBinAddr: 0xA8B8, symSize: 0x1E0 }
+  - { offset: 0x62C88, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationRequest initWithConfiguration:clientId:scopes:redirectURL:responseType:additionalParameters:]', symObjAddr: 0x6CC, symBinAddr: 0xAA98, symSize: 0x34 }
+  - { offset: 0x62D1F, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationRequest initWithConfiguration:clientId:scopes:redirectURL:responseType:nonce:additionalParameters:]', symObjAddr: 0x700, symBinAddr: 0xAACC, symSize: 0x1C8 }
+  - { offset: 0x62DE6, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationRequest copyWithZone:]', symObjAddr: 0x8C8, symBinAddr: 0xAC94, symSize: 0x4 }
+  - { offset: 0x62E27, size: 0x8, addend: 0x0, symName: '+[OIDAuthorizationRequest supportsSecureCoding]', symObjAddr: 0x8CC, symBinAddr: 0xAC98, symSize: 0x8 }
+  - { offset: 0x62E5A, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationRequest initWithCoder:]', symObjAddr: 0x8D4, symBinAddr: 0xACA0, symSize: 0x378 }
+  - { offset: 0x62F78, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationRequest encodeWithCoder:]', symObjAddr: 0xC4C, symBinAddr: 0xB018, symSize: 0x124 }
+  - { offset: 0x62FBD, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationRequest description]', symObjAddr: 0xD70, symBinAddr: 0xB13C, symSize: 0x94 }
+  - { offset: 0x63029, size: 0x8, addend: 0x0, symName: '+[OIDAuthorizationRequest generateCodeVerifier]', symObjAddr: 0xE04, symBinAddr: 0xB1D0, symSize: 0x10 }
+  - { offset: 0x6305D, size: 0x8, addend: 0x0, symName: '+[OIDAuthorizationRequest generateState]', symObjAddr: 0xE14, symBinAddr: 0xB1E0, symSize: 0x10 }
+  - { offset: 0x63091, size: 0x8, addend: 0x0, symName: '+[OIDAuthorizationRequest codeChallengeS256ForVerifier:]', symObjAddr: 0xE24, symBinAddr: 0xB1F0, symSize: 0x60 }
+  - { offset: 0x630E7, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationRequest authorizationRequestURL]', symObjAddr: 0xE84, symBinAddr: 0xB250, symSize: 0x154 }
+  - { offset: 0x63130, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationRequest externalUserAgentRequestURL]', symObjAddr: 0xFD8, symBinAddr: 0xB3A4, symSize: 0x4 }
+  - { offset: 0x63166, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationRequest redirectScheme]', symObjAddr: 0xFDC, symBinAddr: 0xB3A8, symSize: 0x44 }
+  - { offset: 0x6319E, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationRequest configuration]', symObjAddr: 0x1020, symBinAddr: 0xB3EC, symSize: 0x8 }
+  - { offset: 0x631D5, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationRequest responseType]', symObjAddr: 0x1028, symBinAddr: 0xB3F4, symSize: 0x8 }
+  - { offset: 0x6320C, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationRequest clientID]', symObjAddr: 0x1030, symBinAddr: 0xB3FC, symSize: 0x8 }
+  - { offset: 0x63243, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationRequest clientSecret]', symObjAddr: 0x1038, symBinAddr: 0xB404, symSize: 0x8 }
+  - { offset: 0x6327A, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationRequest scope]', symObjAddr: 0x1040, symBinAddr: 0xB40C, symSize: 0x8 }
+  - { offset: 0x632B1, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationRequest redirectURL]', symObjAddr: 0x1048, symBinAddr: 0xB414, symSize: 0x8 }
+  - { offset: 0x632E8, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationRequest state]', symObjAddr: 0x1050, symBinAddr: 0xB41C, symSize: 0x8 }
+  - { offset: 0x6331F, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationRequest nonce]', symObjAddr: 0x1058, symBinAddr: 0xB424, symSize: 0x8 }
+  - { offset: 0x63356, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationRequest codeVerifier]', symObjAddr: 0x1060, symBinAddr: 0xB42C, symSize: 0x8 }
+  - { offset: 0x6338D, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationRequest codeChallenge]', symObjAddr: 0x1068, symBinAddr: 0xB434, symSize: 0x8 }
+  - { offset: 0x633C4, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationRequest codeChallengeMethod]', symObjAddr: 0x1070, symBinAddr: 0xB43C, symSize: 0x8 }
+  - { offset: 0x633FB, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationRequest additionalParameters]', symObjAddr: 0x1078, symBinAddr: 0xB444, symSize: 0x8 }
+  - { offset: 0x63432, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationRequest .cxx_destruct]', symObjAddr: 0x1080, symBinAddr: 0xB44C, symSize: 0xA8 }
+  - { offset: 0x63517, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationSession initWithRequest:]', symObjAddr: 0x0, symBinAddr: 0xB4F4, symSize: 0x78 }
+  - { offset: 0x63B32, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationSession initWithRequest:]', symObjAddr: 0x0, symBinAddr: 0xB4F4, symSize: 0x78 }
+  - { offset: 0x63B79, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationSession presentAuthorizationWithExternalUserAgent:callback:]', symObjAddr: 0x78, symBinAddr: 0xB56C, symSize: 0xC0 }
+  - { offset: 0x63BFB, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationSession cancel]', symObjAddr: 0x138, symBinAddr: 0xB62C, symSize: 0x8 }
+  - { offset: 0x63C2C, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationSession cancelWithCompletion:]', symObjAddr: 0x140, symBinAddr: 0xB634, symSize: 0x88 }
+  - { offset: 0x63C6F, size: 0x8, addend: 0x0, symName: '___48-[OIDAuthorizationSession cancelWithCompletion:]_block_invoke', symObjAddr: 0x1C8, symBinAddr: 0xB6BC, symSize: 0x68 }
+  - { offset: 0x63CE9, size: 0x8, addend: 0x0, symName: '+[OIDAuthorizationSession URL:matchesRedirectionURL:]', symObjAddr: 0x28C, symBinAddr: 0xB724, symSize: 0x43C }
+  - { offset: 0x63D5C, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationSession shouldHandleURL:]', symObjAddr: 0x6C8, symBinAddr: 0xBB60, symSize: 0x78 }
+  - { offset: 0x63DA3, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationSession resumeExternalUserAgentFlowWithURL:]', symObjAddr: 0x740, symBinAddr: 0xBBD8, symSize: 0x3A4 }
+  - { offset: 0x63E39, size: 0x8, addend: 0x0, symName: '___62-[OIDAuthorizationSession resumeExternalUserAgentFlowWithURL:]_block_invoke', symObjAddr: 0xAE4, symBinAddr: 0xBF7C, symSize: 0x10 }
+  - { offset: 0x63E98, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationSession failExternalUserAgentFlowWithError:]', symObjAddr: 0xB54, symBinAddr: 0xBF8C, symSize: 0xC }
+  - { offset: 0x63ED9, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationSession didFinishWithResponse:error:]', symObjAddr: 0xB60, symBinAddr: 0xBF98, symSize: 0x90 }
+  - { offset: 0x63F5E, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationSession .cxx_destruct]', symObjAddr: 0xBF0, symBinAddr: 0xC028, symSize: 0x3C }
+  - { offset: 0x63F91, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionImplementation initWithRequest:]', symObjAddr: 0xC2C, symBinAddr: 0xC064, symSize: 0x78 }
+  - { offset: 0x63FD8, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionImplementation presentAuthorizationWithExternalUserAgent:callback:]', symObjAddr: 0xCA4, symBinAddr: 0xC0DC, symSize: 0xC0 }
+  - { offset: 0x6405A, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionImplementation cancel]', symObjAddr: 0xD64, symBinAddr: 0xC19C, symSize: 0x8 }
+  - { offset: 0x6408B, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionImplementation cancelWithCompletion:]', symObjAddr: 0xD6C, symBinAddr: 0xC1A4, symSize: 0x88 }
+  - { offset: 0x640CE, size: 0x8, addend: 0x0, symName: '___52-[OIDEndSessionImplementation cancelWithCompletion:]_block_invoke', symObjAddr: 0xDF4, symBinAddr: 0xC22C, symSize: 0x64 }
+  - { offset: 0x64148, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionImplementation shouldHandleURL:]', symObjAddr: 0xE58, symBinAddr: 0xC290, symSize: 0x80 }
+  - { offset: 0x6418F, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionImplementation resumeExternalUserAgentFlowWithURL:]', symObjAddr: 0xED8, symBinAddr: 0xC310, symSize: 0x30C }
+  - { offset: 0x6422B, size: 0x8, addend: 0x0, symName: '___66-[OIDEndSessionImplementation resumeExternalUserAgentFlowWithURL:]_block_invoke', symObjAddr: 0x11E4, symBinAddr: 0xC61C, symSize: 0x10 }
+  - { offset: 0x6428F, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionImplementation failExternalUserAgentFlowWithError:]', symObjAddr: 0x11F4, symBinAddr: 0xC62C, symSize: 0xC }
+  - { offset: 0x642D2, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionImplementation didFinishWithResponse:error:]', symObjAddr: 0x1200, symBinAddr: 0xC638, symSize: 0x90 }
+  - { offset: 0x6435B, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionImplementation .cxx_destruct]', symObjAddr: 0x1290, symBinAddr: 0xC6C8, symSize: 0x3C }
+  - { offset: 0x6438E, size: 0x8, addend: 0x0, symName: '+[OIDAuthorizationService discoverServiceConfigurationForIssuer:completion:]', symObjAddr: 0x12CC, symBinAddr: 0xC704, symSize: 0x70 }
+  - { offset: 0x643F5, size: 0x8, addend: 0x0, symName: '+[OIDAuthorizationService discoverServiceConfigurationForDiscoveryURL:completion:]', symObjAddr: 0x133C, symBinAddr: 0xC774, symSize: 0xF4 }
+  - { offset: 0x64469, size: 0x8, addend: 0x0, symName: '___82+[OIDAuthorizationService discoverServiceConfigurationForDiscoveryURL:completion:]_block_invoke', symObjAddr: 0x1430, symBinAddr: 0xC868, symSize: 0x3CC }
+  - { offset: 0x6461B, size: 0x8, addend: 0x0, symName: '___82+[OIDAuthorizationService discoverServiceConfigurationForDiscoveryURL:completion:]_block_invoke_2', symObjAddr: 0x17FC, symBinAddr: 0xCC34, symSize: 0x14 }
+  - { offset: 0x6467D, size: 0x8, addend: 0x0, symName: '___82+[OIDAuthorizationService discoverServiceConfigurationForDiscoveryURL:completion:]_block_invoke_3', symObjAddr: 0x1810, symBinAddr: 0xCC48, symSize: 0x14 }
+  - { offset: 0x646DF, size: 0x8, addend: 0x0, symName: '___82+[OIDAuthorizationService discoverServiceConfigurationForDiscoveryURL:completion:]_block_invoke_4', symObjAddr: 0x1824, symBinAddr: 0xCC5C, symSize: 0x14 }
+  - { offset: 0x64741, size: 0x8, addend: 0x0, symName: '___82+[OIDAuthorizationService discoverServiceConfigurationForDiscoveryURL:completion:]_block_invoke_5', symObjAddr: 0x1838, symBinAddr: 0xCC70, symSize: 0x14 }
+  - { offset: 0x647A3, size: 0x8, addend: 0x0, symName: '+[OIDAuthorizationService presentAuthorizationRequest:externalUserAgent:callback:]', symObjAddr: 0x184C, symBinAddr: 0xCC84, symSize: 0x94 }
+  - { offset: 0x6481B, size: 0x8, addend: 0x0, symName: '+[OIDAuthorizationService presentEndSessionRequest:externalUserAgent:callback:]', symObjAddr: 0x18E0, symBinAddr: 0xCD18, symSize: 0x94 }
+  - { offset: 0x64893, size: 0x8, addend: 0x0, symName: '+[OIDAuthorizationService performTokenRequest:callback:]', symObjAddr: 0x1974, symBinAddr: 0xCDAC, symSize: 0x64 }
+  - { offset: 0x648E9, size: 0x8, addend: 0x0, symName: '+[OIDAuthorizationService performTokenRequest:originalAuthorizationResponse:callback:]', symObjAddr: 0x19D8, symBinAddr: 0xCE10, symSize: 0x15C }
+  - { offset: 0x6496E, size: 0x8, addend: 0x0, symName: '___86+[OIDAuthorizationService performTokenRequest:originalAuthorizationResponse:callback:]_block_invoke', symObjAddr: 0x1B34, symBinAddr: 0xCF6C, symSize: 0xC10 }
+  - { offset: 0x64DCF, size: 0x8, addend: 0x0, symName: '___86+[OIDAuthorizationService performTokenRequest:originalAuthorizationResponse:callback:]_block_invoke_2', symObjAddr: 0x2744, symBinAddr: 0xDB7C, symSize: 0x14 }
+  - { offset: 0x64E31, size: 0x8, addend: 0x0, symName: '___86+[OIDAuthorizationService performTokenRequest:originalAuthorizationResponse:callback:]_block_invoke_3', symObjAddr: 0x2758, symBinAddr: 0xDB90, symSize: 0x14 }
+  - { offset: 0x64E93, size: 0x8, addend: 0x0, symName: '___86+[OIDAuthorizationService performTokenRequest:originalAuthorizationResponse:callback:]_block_invoke_4', symObjAddr: 0x276C, symBinAddr: 0xDBA4, symSize: 0x14 }
+  - { offset: 0x64EF5, size: 0x8, addend: 0x0, symName: '___86+[OIDAuthorizationService performTokenRequest:originalAuthorizationResponse:callback:]_block_invoke_5', symObjAddr: 0x2780, symBinAddr: 0xDBB8, symSize: 0x14 }
+  - { offset: 0x64F57, size: 0x8, addend: 0x0, symName: '___86+[OIDAuthorizationService performTokenRequest:originalAuthorizationResponse:callback:]_block_invoke_6', symObjAddr: 0x2794, symBinAddr: 0xDBCC, symSize: 0x14 }
+  - { offset: 0x64FB9, size: 0x8, addend: 0x0, symName: '___86+[OIDAuthorizationService performTokenRequest:originalAuthorizationResponse:callback:]_block_invoke_7', symObjAddr: 0x27A8, symBinAddr: 0xDBE0, symSize: 0x14 }
+  - { offset: 0x6501B, size: 0x8, addend: 0x0, symName: '___86+[OIDAuthorizationService performTokenRequest:originalAuthorizationResponse:callback:]_block_invoke_8', symObjAddr: 0x27BC, symBinAddr: 0xDBF4, symSize: 0x14 }
+  - { offset: 0x6507D, size: 0x8, addend: 0x0, symName: '___86+[OIDAuthorizationService performTokenRequest:originalAuthorizationResponse:callback:]_block_invoke_9', symObjAddr: 0x27D0, symBinAddr: 0xDC08, symSize: 0x14 }
+  - { offset: 0x650DF, size: 0x8, addend: 0x0, symName: '___86+[OIDAuthorizationService performTokenRequest:originalAuthorizationResponse:callback:]_block_invoke_10', symObjAddr: 0x27E4, symBinAddr: 0xDC1C, symSize: 0x14 }
+  - { offset: 0x65141, size: 0x8, addend: 0x0, symName: '___86+[OIDAuthorizationService performTokenRequest:originalAuthorizationResponse:callback:]_block_invoke_11', symObjAddr: 0x27F8, symBinAddr: 0xDC30, symSize: 0x14 }
+  - { offset: 0x651A3, size: 0x8, addend: 0x0, symName: '___86+[OIDAuthorizationService performTokenRequest:originalAuthorizationResponse:callback:]_block_invoke_12', symObjAddr: 0x280C, symBinAddr: 0xDC44, symSize: 0x14 }
+  - { offset: 0x65205, size: 0x8, addend: 0x0, symName: '___86+[OIDAuthorizationService performTokenRequest:originalAuthorizationResponse:callback:]_block_invoke_13', symObjAddr: 0x2820, symBinAddr: 0xDC58, symSize: 0x14 }
+  - { offset: 0x65267, size: 0x8, addend: 0x0, symName: ___copy_helper_block_e8_32s40s48s56b, symObjAddr: 0x2834, symBinAddr: 0xDC6C, symSize: 0x44 }
+  - { offset: 0x65290, size: 0x8, addend: 0x0, symName: ___destroy_helper_block_e8_32s40s48s56s, symObjAddr: 0x2878, symBinAddr: 0xDCB0, symSize: 0x38 }
+  - { offset: 0x652AF, size: 0x8, addend: 0x0, symName: '+[OIDAuthorizationService performRegistrationRequest:completion:]', symObjAddr: 0x28B0, symBinAddr: 0xDCE8, symSize: 0x1D0 }
+  - { offset: 0x6535A, size: 0x8, addend: 0x0, symName: '___65+[OIDAuthorizationService performRegistrationRequest:completion:]_block_invoke', symObjAddr: 0x2A80, symBinAddr: 0xDEB8, symSize: 0x14 }
+  - { offset: 0x653BC, size: 0x8, addend: 0x0, symName: '___65+[OIDAuthorizationService performRegistrationRequest:completion:]_block_invoke_2', symObjAddr: 0x2A94, symBinAddr: 0xDECC, symSize: 0x5D8 }
+  - { offset: 0x6562C, size: 0x8, addend: 0x0, symName: '___65+[OIDAuthorizationService performRegistrationRequest:completion:]_block_invoke_3', symObjAddr: 0x306C, symBinAddr: 0xE4A4, symSize: 0x14 }
+  - { offset: 0x6568E, size: 0x8, addend: 0x0, symName: '___65+[OIDAuthorizationService performRegistrationRequest:completion:]_block_invoke_4', symObjAddr: 0x3080, symBinAddr: 0xE4B8, symSize: 0x14 }
+  - { offset: 0x656F0, size: 0x8, addend: 0x0, symName: '___65+[OIDAuthorizationService performRegistrationRequest:completion:]_block_invoke_5', symObjAddr: 0x3094, symBinAddr: 0xE4CC, symSize: 0x14 }
+  - { offset: 0x65752, size: 0x8, addend: 0x0, symName: '___65+[OIDAuthorizationService performRegistrationRequest:completion:]_block_invoke_6', symObjAddr: 0x30A8, symBinAddr: 0xE4E0, symSize: 0x14 }
+  - { offset: 0x657B4, size: 0x8, addend: 0x0, symName: '___65+[OIDAuthorizationService performRegistrationRequest:completion:]_block_invoke_7', symObjAddr: 0x30BC, symBinAddr: 0xE4F4, symSize: 0x14 }
+  - { offset: 0x65816, size: 0x8, addend: 0x0, symName: '___65+[OIDAuthorizationService performRegistrationRequest:completion:]_block_invoke_8', symObjAddr: 0x30D0, symBinAddr: 0xE508, symSize: 0x14 }
+  - { offset: 0x65878, size: 0x8, addend: 0x0, symName: ___copy_helper_block_e8_32s40s48b, symObjAddr: 0x30E4, symBinAddr: 0xE51C, symSize: 0x3C }
+  - { offset: 0x658A1, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationService configuration]', symObjAddr: 0x3120, symBinAddr: 0xE558, symSize: 0x8 }
+  - { offset: 0x658D8, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationService .cxx_destruct]', symObjAddr: 0x3128, symBinAddr: 0xE560, symSize: 0xC }
+  - { offset: 0x66B59, size: 0x8, addend: 0x0, symName: _OIDTokenEndpointAuthenticationMethodParam, symObjAddr: 0x150, symBinAddr: 0x20410, symSize: 0x0 }
+  - { offset: 0x66B79, size: 0x8, addend: 0x0, symName: _OIDApplicationTypeParam, symObjAddr: 0x158, symBinAddr: 0x20418, symSize: 0x0 }
+  - { offset: 0x66B8F, size: 0x8, addend: 0x0, symName: _OIDRedirectURIsParam, symObjAddr: 0x160, symBinAddr: 0x20420, symSize: 0x0 }
+  - { offset: 0x66BA5, size: 0x8, addend: 0x0, symName: _OIDResponseTypesParam, symObjAddr: 0x168, symBinAddr: 0x20428, symSize: 0x0 }
+  - { offset: 0x66BBB, size: 0x8, addend: 0x0, symName: _OIDGrantTypesParam, symObjAddr: 0x170, symBinAddr: 0x20430, symSize: 0x0 }
+  - { offset: 0x66BD1, size: 0x8, addend: 0x0, symName: _OIDSubjectTypeParam, symObjAddr: 0x178, symBinAddr: 0x20438, symSize: 0x0 }
+  - { offset: 0x66BE7, size: 0x8, addend: 0x0, symName: _OIDApplicationTypeNative, symObjAddr: 0x180, symBinAddr: 0x20440, symSize: 0x0 }
+  - { offset: 0x66C1F, size: 0x8, addend: 0x0, symName: '+[OIDTokenUtilities encodeBase64urlNoPadding:]', symObjAddr: 0x0, symBinAddr: 0xE56C, symSize: 0xB4 }
+  - { offset: 0x66C3A, size: 0x8, addend: 0x0, symName: '+[OIDTokenUtilities encodeBase64urlNoPadding:]', symObjAddr: 0x0, symBinAddr: 0xE56C, symSize: 0xB4 }
+  - { offset: 0x66C8D, size: 0x8, addend: 0x0, symName: '+[OIDTokenUtilities randomURLSafeStringWithSize:]', symObjAddr: 0xB4, symBinAddr: 0xE620, symSize: 0xA0 }
+  - { offset: 0x66D3B, size: 0x8, addend: 0x0, symName: '+[OIDTokenUtilities sha256:]', symObjAddr: 0x154, symBinAddr: 0xE6C0, symSize: 0x98 }
+  - { offset: 0x66DE9, size: 0x8, addend: 0x0, symName: '+[OIDTokenUtilities redact:]', symObjAddr: 0x1EC, symBinAddr: 0xE758, symSize: 0x9C }
+  - { offset: 0x66E2C, size: 0x8, addend: 0x0, symName: '+[OIDTokenUtilities formUrlEncode:]', symObjAddr: 0x288, symBinAddr: 0xE7F4, symSize: 0xB8 }
+  - { offset: 0x66EFE, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery init]', symObjAddr: 0x0, symBinAddr: 0xE8AC, symSize: 0xA4 }
+  - { offset: 0x66F16, size: 0x8, addend: 0x0, symName: '+[OIDServiceDiscovery dictionaryHasRequiredFields:error:]', symObjAddr: 0x310, symBinAddr: 0xEBBC, symSize: 0x37C }
+  - { offset: 0x67238, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery init]', symObjAddr: 0x0, symBinAddr: 0xE8AC, symSize: 0xA4 }
+  - { offset: 0x672CA, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery initWithJSON:error:]', symObjAddr: 0xA4, symBinAddr: 0xE950, symSize: 0x60 }
+  - { offset: 0x67331, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery initWithJSONData:error:]', symObjAddr: 0x104, symBinAddr: 0xE9B0, symSize: 0x150 }
+  - { offset: 0x673A8, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery initWithDictionary:error:]', symObjAddr: 0x254, symBinAddr: 0xEB00, symSize: 0xBC }
+  - { offset: 0x673FF, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery copyWithZone:]', symObjAddr: 0x68C, symBinAddr: 0xEF38, symSize: 0x4 }
+  - { offset: 0x67440, size: 0x8, addend: 0x0, symName: '+[OIDServiceDiscovery supportsSecureCoding]', symObjAddr: 0x690, symBinAddr: 0xEF3C, symSize: 0x8 }
+  - { offset: 0x67473, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery initWithCoder:]', symObjAddr: 0x698, symBinAddr: 0xEF44, symSize: 0x1A4 }
+  - { offset: 0x674F9, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery encodeWithCoder:]', symObjAddr: 0x83C, symBinAddr: 0xF0E8, symSize: 0x54 }
+  - { offset: 0x6753C, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery discoveryDictionary]', symObjAddr: 0x890, symBinAddr: 0xF13C, symSize: 0x8 }
+  - { offset: 0x67573, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery issuer]', symObjAddr: 0x898, symBinAddr: 0xF144, symSize: 0x60 }
+  - { offset: 0x675AA, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery authorizationEndpoint]', symObjAddr: 0x8F8, symBinAddr: 0xF1A4, symSize: 0x60 }
+  - { offset: 0x675E1, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery deviceAuthorizationEndpoint]', symObjAddr: 0x958, symBinAddr: 0xF204, symSize: 0x60 }
+  - { offset: 0x67618, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery tokenEndpoint]', symObjAddr: 0x9B8, symBinAddr: 0xF264, symSize: 0x60 }
+  - { offset: 0x6764F, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery userinfoEndpoint]', symObjAddr: 0xA18, symBinAddr: 0xF2C4, symSize: 0x60 }
+  - { offset: 0x67686, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery jwksURL]', symObjAddr: 0xA78, symBinAddr: 0xF324, symSize: 0x60 }
+  - { offset: 0x676BE, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery registrationEndpoint]', symObjAddr: 0xAD8, symBinAddr: 0xF384, symSize: 0x60 }
+  - { offset: 0x676F6, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery endSessionEndpoint]', symObjAddr: 0xB38, symBinAddr: 0xF3E4, symSize: 0x60 }
+  - { offset: 0x6772E, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery scopesSupported]', symObjAddr: 0xB98, symBinAddr: 0xF444, symSize: 0x10 }
+  - { offset: 0x67766, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery responseTypesSupported]', symObjAddr: 0xBA8, symBinAddr: 0xF454, symSize: 0x10 }
+  - { offset: 0x6779E, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery responseModesSupported]', symObjAddr: 0xBB8, symBinAddr: 0xF464, symSize: 0x10 }
+  - { offset: 0x677D6, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery grantTypesSupported]', symObjAddr: 0xBC8, symBinAddr: 0xF474, symSize: 0x10 }
+  - { offset: 0x6780E, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery acrValuesSupported]', symObjAddr: 0xBD8, symBinAddr: 0xF484, symSize: 0x10 }
+  - { offset: 0x67846, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery subjectTypesSupported]', symObjAddr: 0xBE8, symBinAddr: 0xF494, symSize: 0x10 }
+  - { offset: 0x6787E, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery IDTokenSigningAlgorithmValuesSupported]', symObjAddr: 0xBF8, symBinAddr: 0xF4A4, symSize: 0x10 }
+  - { offset: 0x678B6, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery IDTokenEncryptionAlgorithmValuesSupported]', symObjAddr: 0xC08, symBinAddr: 0xF4B4, symSize: 0x10 }
+  - { offset: 0x678EE, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery IDTokenEncryptionEncodingValuesSupported]', symObjAddr: 0xC18, symBinAddr: 0xF4C4, symSize: 0x10 }
+  - { offset: 0x67926, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery userinfoSigningAlgorithmValuesSupported]', symObjAddr: 0xC28, symBinAddr: 0xF4D4, symSize: 0x10 }
+  - { offset: 0x6795E, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery userinfoEncryptionAlgorithmValuesSupported]', symObjAddr: 0xC38, symBinAddr: 0xF4E4, symSize: 0x10 }
+  - { offset: 0x67996, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery userinfoEncryptionEncodingValuesSupported]', symObjAddr: 0xC48, symBinAddr: 0xF4F4, symSize: 0x10 }
+  - { offset: 0x679CE, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery requestObjectSigningAlgorithmValuesSupported]', symObjAddr: 0xC58, symBinAddr: 0xF504, symSize: 0x10 }
+  - { offset: 0x67A06, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery requestObjectEncryptionAlgorithmValuesSupported]', symObjAddr: 0xC68, symBinAddr: 0xF514, symSize: 0x10 }
+  - { offset: 0x67A3E, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery requestObjectEncryptionEncodingValuesSupported]', symObjAddr: 0xC78, symBinAddr: 0xF524, symSize: 0x10 }
+  - { offset: 0x67A76, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery tokenEndpointAuthMethodsSupported]', symObjAddr: 0xC88, symBinAddr: 0xF534, symSize: 0x10 }
+  - { offset: 0x67AAE, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery tokenEndpointAuthSigningAlgorithmValuesSupported]', symObjAddr: 0xC98, symBinAddr: 0xF544, symSize: 0x10 }
+  - { offset: 0x67AE6, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery displayValuesSupported]', symObjAddr: 0xCA8, symBinAddr: 0xF554, symSize: 0x10 }
+  - { offset: 0x67B1E, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery claimTypesSupported]', symObjAddr: 0xCB8, symBinAddr: 0xF564, symSize: 0x10 }
+  - { offset: 0x67B56, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery claimsSupported]', symObjAddr: 0xCC8, symBinAddr: 0xF574, symSize: 0x10 }
+  - { offset: 0x67B8E, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery serviceDocumentation]', symObjAddr: 0xCD8, symBinAddr: 0xF584, symSize: 0x60 }
+  - { offset: 0x67BC6, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery claimsLocalesSupported]', symObjAddr: 0xD38, symBinAddr: 0xF5E4, symSize: 0x10 }
+  - { offset: 0x67BFE, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery UILocalesSupported]', symObjAddr: 0xD48, symBinAddr: 0xF5F4, symSize: 0x10 }
+  - { offset: 0x67C36, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery claimsParameterSupported]', symObjAddr: 0xD58, symBinAddr: 0xF604, symSize: 0x48 }
+  - { offset: 0x67C6E, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery requestParameterSupported]', symObjAddr: 0xDA0, symBinAddr: 0xF64C, symSize: 0x48 }
+  - { offset: 0x67CA6, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery requestURIParameterSupported]', symObjAddr: 0xDE8, symBinAddr: 0xF694, symSize: 0x78 }
+  - { offset: 0x67CDE, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery requireRequestURIRegistration]', symObjAddr: 0xE60, symBinAddr: 0xF70C, symSize: 0x48 }
+  - { offset: 0x67D16, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery OPPolicyURI]', symObjAddr: 0xEA8, symBinAddr: 0xF754, symSize: 0x60 }
+  - { offset: 0x67D4E, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery OPTosURI]', symObjAddr: 0xF08, symBinAddr: 0xF7B4, symSize: 0x60 }
+  - { offset: 0x67D86, size: 0x8, addend: 0x0, symName: '-[OIDServiceDiscovery .cxx_destruct]', symObjAddr: 0xF68, symBinAddr: 0xF814, symSize: 0xC }
+  - { offset: 0x67E4F, size: 0x8, addend: 0x0, symName: '-[OIDTokenRequest init]', symObjAddr: 0x0, symBinAddr: 0xF820, symSize: 0xA4 }
+  - { offset: 0x67E67, size: 0x8, addend: 0x0, symName: '-[OIDTokenRequest URLRequest]', symObjAddr: 0xD54, symBinAddr: 0x10574, symSize: 0x3DC }
+  - { offset: 0x6817E, size: 0x8, addend: 0x0, symName: '-[OIDTokenRequest init]', symObjAddr: 0x0, symBinAddr: 0xF820, symSize: 0xA4 }
+  - { offset: 0x68210, size: 0x8, addend: 0x0, symName: '-[OIDTokenRequest initWithConfiguration:grantType:authorizationCode:redirectURL:clientID:clientSecret:scopes:refreshToken:codeVerifier:additionalParameters:]', symObjAddr: 0xA4, symBinAddr: 0xF8C4, symSize: 0x34 }
+  - { offset: 0x682E3, size: 0x8, addend: 0x0, symName: '-[OIDTokenRequest initWithConfiguration:grantType:authorizationCode:redirectURL:clientID:clientSecret:scope:refreshToken:codeVerifier:additionalParameters:]', symObjAddr: 0xD8, symBinAddr: 0xF8F8, symSize: 0x34 }
+  - { offset: 0x683B6, size: 0x8, addend: 0x0, symName: '-[OIDTokenRequest initWithConfiguration:grantType:authorizationCode:redirectURL:clientID:clientSecret:scopes:refreshToken:codeVerifier:additionalParameters:additionalHeaders:]', symObjAddr: 0x10C, symBinAddr: 0xF92C, symSize: 0x1A8 }
+  - { offset: 0x6849D, size: 0x8, addend: 0x0, symName: '-[OIDTokenRequest initWithConfiguration:grantType:authorizationCode:redirectURL:clientID:clientSecret:scope:refreshToken:codeVerifier:additionalParameters:additionalHeaders:]', symObjAddr: 0x2B4, symBinAddr: 0xFAD4, symSize: 0x2D8 }
+  - { offset: 0x6857F, size: 0x8, addend: 0x0, symName: '-[OIDTokenRequest copyWithZone:]', symObjAddr: 0x58C, symBinAddr: 0xFDAC, symSize: 0x4 }
+  - { offset: 0x685C0, size: 0x8, addend: 0x0, symName: '+[OIDTokenRequest supportsSecureCoding]', symObjAddr: 0x590, symBinAddr: 0xFDB0, symSize: 0x8 }
+  - { offset: 0x685F3, size: 0x8, addend: 0x0, symName: '-[OIDTokenRequest initWithCoder:]', symObjAddr: 0x598, symBinAddr: 0xFDB8, symSize: 0x4B4 }
+  - { offset: 0x6870A, size: 0x8, addend: 0x0, symName: '-[OIDTokenRequest encodeWithCoder:]', symObjAddr: 0xA4C, symBinAddr: 0x1026C, symSize: 0x110 }
+  - { offset: 0x6874F, size: 0x8, addend: 0x0, symName: '-[OIDTokenRequest description]', symObjAddr: 0xB5C, symBinAddr: 0x1037C, symSize: 0xFC }
+  - { offset: 0x687DD, size: 0x8, addend: 0x0, symName: '-[OIDTokenRequest tokenRequestURL]', symObjAddr: 0xC58, symBinAddr: 0x10478, symSize: 0x8 }
+  - { offset: 0x68815, size: 0x8, addend: 0x0, symName: '-[OIDTokenRequest tokenRequestBody]', symObjAddr: 0xC60, symBinAddr: 0x10480, symSize: 0xF4 }
+  - { offset: 0x6885E, size: 0x8, addend: 0x0, symName: '-[OIDTokenRequest configuration]', symObjAddr: 0x1130, symBinAddr: 0x10950, symSize: 0x8 }
+  - { offset: 0x68895, size: 0x8, addend: 0x0, symName: '-[OIDTokenRequest grantType]', symObjAddr: 0x1138, symBinAddr: 0x10958, symSize: 0x8 }
+  - { offset: 0x688CC, size: 0x8, addend: 0x0, symName: '-[OIDTokenRequest authorizationCode]', symObjAddr: 0x1140, symBinAddr: 0x10960, symSize: 0x8 }
+  - { offset: 0x68903, size: 0x8, addend: 0x0, symName: '-[OIDTokenRequest redirectURL]', symObjAddr: 0x1148, symBinAddr: 0x10968, symSize: 0x8 }
+  - { offset: 0x6893A, size: 0x8, addend: 0x0, symName: '-[OIDTokenRequest clientID]', symObjAddr: 0x1150, symBinAddr: 0x10970, symSize: 0x8 }
+  - { offset: 0x68971, size: 0x8, addend: 0x0, symName: '-[OIDTokenRequest clientSecret]', symObjAddr: 0x1158, symBinAddr: 0x10978, symSize: 0x8 }
+  - { offset: 0x689A8, size: 0x8, addend: 0x0, symName: '-[OIDTokenRequest scope]', symObjAddr: 0x1160, symBinAddr: 0x10980, symSize: 0x8 }
+  - { offset: 0x689DF, size: 0x8, addend: 0x0, symName: '-[OIDTokenRequest refreshToken]', symObjAddr: 0x1168, symBinAddr: 0x10988, symSize: 0x8 }
+  - { offset: 0x68A16, size: 0x8, addend: 0x0, symName: '-[OIDTokenRequest codeVerifier]', symObjAddr: 0x1170, symBinAddr: 0x10990, symSize: 0x8 }
+  - { offset: 0x68A4D, size: 0x8, addend: 0x0, symName: '-[OIDTokenRequest additionalParameters]', symObjAddr: 0x1178, symBinAddr: 0x10998, symSize: 0x8 }
+  - { offset: 0x68A84, size: 0x8, addend: 0x0, symName: '-[OIDTokenRequest additionalHeaders]', symObjAddr: 0x1180, symBinAddr: 0x109A0, symSize: 0x8 }
+  - { offset: 0x68ABB, size: 0x8, addend: 0x0, symName: '-[OIDTokenRequest .cxx_destruct]', symObjAddr: 0x1188, symBinAddr: 0x109A8, symSize: 0x9C }
+  - { offset: 0x68BB4, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionRequest init]', symObjAddr: 0x0, symBinAddr: 0x10A44, symSize: 0xA4 }
+  - { offset: 0x68EEF, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionRequest init]', symObjAddr: 0x0, symBinAddr: 0x10A44, symSize: 0xA4 }
+  - { offset: 0x68F81, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionRequest initWithConfiguration:idTokenHint:postLogoutRedirectURL:state:additionalParameters:]', symObjAddr: 0xA4, symBinAddr: 0x10AE8, symSize: 0x160 }
+  - { offset: 0x69008, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionRequest initWithConfiguration:idTokenHint:postLogoutRedirectURL:additionalParameters:]', symObjAddr: 0x204, symBinAddr: 0x10C48, symSize: 0xCC }
+  - { offset: 0x6907F, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionRequest copyWithZone:]', symObjAddr: 0x2D0, symBinAddr: 0x10D14, symSize: 0x4 }
+  - { offset: 0x690C0, size: 0x8, addend: 0x0, symName: '+[OIDEndSessionRequest supportsSecureCoding]', symObjAddr: 0x2D4, symBinAddr: 0x10D18, symSize: 0x8 }
+  - { offset: 0x690F3, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionRequest initWithCoder:]', symObjAddr: 0x2DC, symBinAddr: 0x10D20, symSize: 0x204 }
+  - { offset: 0x6919A, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionRequest encodeWithCoder:]', symObjAddr: 0x4E0, symBinAddr: 0x10F24, symSize: 0x98 }
+  - { offset: 0x691DD, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionRequest description]', symObjAddr: 0x578, symBinAddr: 0x10FBC, symSize: 0x94 }
+  - { offset: 0x69248, size: 0x8, addend: 0x0, symName: '+[OIDEndSessionRequest generateState]', symObjAddr: 0x60C, symBinAddr: 0x11050, symSize: 0x10 }
+  - { offset: 0x6927B, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionRequest externalUserAgentRequestURL]', symObjAddr: 0x61C, symBinAddr: 0x11060, symSize: 0x4 }
+  - { offset: 0x692B0, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionRequest redirectScheme]', symObjAddr: 0x620, symBinAddr: 0x11064, symSize: 0x8 }
+  - { offset: 0x692E7, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionRequest endSessionRequestURL]', symObjAddr: 0x628, symBinAddr: 0x1106C, symSize: 0xE4 }
+  - { offset: 0x6932E, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionRequest configuration]', symObjAddr: 0x70C, symBinAddr: 0x11150, symSize: 0x8 }
+  - { offset: 0x69365, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionRequest postLogoutRedirectURL]', symObjAddr: 0x714, symBinAddr: 0x11158, symSize: 0x8 }
+  - { offset: 0x6939C, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionRequest idTokenHint]', symObjAddr: 0x71C, symBinAddr: 0x11160, symSize: 0x8 }
+  - { offset: 0x693D3, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionRequest state]', symObjAddr: 0x724, symBinAddr: 0x11168, symSize: 0x8 }
+  - { offset: 0x6940A, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionRequest additionalParameters]', symObjAddr: 0x72C, symBinAddr: 0x11170, symSize: 0x8 }
+  - { offset: 0x69441, size: 0x8, addend: 0x0, symName: '-[OIDEndSessionRequest .cxx_destruct]', symObjAddr: 0x734, symBinAddr: 0x11178, symSize: 0x54 }
+  - { offset: 0x69515, size: 0x8, addend: 0x0, symName: '+[OIDAuthorizationService(IOS) presentAuthorizationRequest:presentingViewController:callback:]', symObjAddr: 0x0, symBinAddr: 0x111CC, symSize: 0xB8 }
+  - { offset: 0x69523, size: 0x8, addend: 0x0, symName: '+[OIDAuthorizationService(IOS) presentAuthorizationRequest:presentingViewController:callback:]', symObjAddr: 0x0, symBinAddr: 0x111CC, symSize: 0xB8 }
+  - { offset: 0x6959A, size: 0x8, addend: 0x0, symName: '+[OIDAuthorizationService(IOS) presentAuthorizationRequest:presentingViewController:prefersEphemeralSession:callback:]', symObjAddr: 0xB8, symBinAddr: 0x11284, symSize: 0xC0 }
+  - { offset: 0x69769, size: 0x8, addend: 0x0, symName: '-[OIDServiceConfiguration init]', symObjAddr: 0x0, symBinAddr: 0x11344, symSize: 0xA4 }
+  - { offset: 0x69A44, size: 0x8, addend: 0x0, symName: '-[OIDServiceConfiguration init]', symObjAddr: 0x0, symBinAddr: 0x11344, symSize: 0xA4 }
+  - { offset: 0x69AD6, size: 0x8, addend: 0x0, symName: '-[OIDServiceConfiguration initWithAuthorizationEndpoint:tokenEndpoint:issuer:registrationEndpoint:endSessionEndpoint:discoveryDocument:]', symObjAddr: 0xA4, symBinAddr: 0x113E8, symSize: 0x180 }
+  - { offset: 0x69B6D, size: 0x8, addend: 0x0, symName: '-[OIDServiceConfiguration initWithAuthorizationEndpoint:tokenEndpoint:]', symObjAddr: 0x224, symBinAddr: 0x11568, symSize: 0x14 }
+  - { offset: 0x69BBE, size: 0x8, addend: 0x0, symName: '-[OIDServiceConfiguration initWithAuthorizationEndpoint:tokenEndpoint:registrationEndpoint:]', symObjAddr: 0x238, symBinAddr: 0x1157C, symSize: 0x14 }
+  - { offset: 0x69C21, size: 0x8, addend: 0x0, symName: '-[OIDServiceConfiguration initWithAuthorizationEndpoint:tokenEndpoint:issuer:]', symObjAddr: 0x24C, symBinAddr: 0x11590, symSize: 0x10 }
+  - { offset: 0x69C80, size: 0x8, addend: 0x0, symName: '-[OIDServiceConfiguration initWithAuthorizationEndpoint:tokenEndpoint:issuer:registrationEndpoint:]', symObjAddr: 0x25C, symBinAddr: 0x115A0, symSize: 0xC }
+  - { offset: 0x69CED, size: 0x8, addend: 0x0, symName: '-[OIDServiceConfiguration initWithAuthorizationEndpoint:tokenEndpoint:issuer:registrationEndpoint:endSessionEndpoint:]', symObjAddr: 0x268, symBinAddr: 0x115AC, symSize: 0x8 }
+  - { offset: 0x69D68, size: 0x8, addend: 0x0, symName: '-[OIDServiceConfiguration initWithDiscoveryDocument:]', symObjAddr: 0x270, symBinAddr: 0x115B4, symSize: 0xF8 }
+  - { offset: 0x69DAF, size: 0x8, addend: 0x0, symName: '-[OIDServiceConfiguration copyWithZone:]', symObjAddr: 0x368, symBinAddr: 0x116AC, symSize: 0x4 }
+  - { offset: 0x69DF0, size: 0x8, addend: 0x0, symName: '+[OIDServiceConfiguration supportsSecureCoding]', symObjAddr: 0x36C, symBinAddr: 0x116B0, symSize: 0x8 }
+  - { offset: 0x69E23, size: 0x8, addend: 0x0, symName: '-[OIDServiceConfiguration initWithCoder:]', symObjAddr: 0x374, symBinAddr: 0x116B8, symSize: 0x294 }
+  - { offset: 0x69EDA, size: 0x8, addend: 0x0, symName: '-[OIDServiceConfiguration encodeWithCoder:]', symObjAddr: 0x608, symBinAddr: 0x1194C, symSize: 0xAC }
+  - { offset: 0x69F1D, size: 0x8, addend: 0x0, symName: '-[OIDServiceConfiguration description]', symObjAddr: 0x6B4, symBinAddr: 0x119F8, symSize: 0x44 }
+  - { offset: 0x69F54, size: 0x8, addend: 0x0, symName: '-[OIDServiceConfiguration authorizationEndpoint]', symObjAddr: 0x6F8, symBinAddr: 0x11A3C, symSize: 0x8 }
+  - { offset: 0x69F8B, size: 0x8, addend: 0x0, symName: '-[OIDServiceConfiguration tokenEndpoint]', symObjAddr: 0x700, symBinAddr: 0x11A44, symSize: 0x8 }
+  - { offset: 0x69FC2, size: 0x8, addend: 0x0, symName: '-[OIDServiceConfiguration issuer]', symObjAddr: 0x708, symBinAddr: 0x11A4C, symSize: 0x8 }
+  - { offset: 0x69FF9, size: 0x8, addend: 0x0, symName: '-[OIDServiceConfiguration registrationEndpoint]', symObjAddr: 0x710, symBinAddr: 0x11A54, symSize: 0x8 }
+  - { offset: 0x6A030, size: 0x8, addend: 0x0, symName: '-[OIDServiceConfiguration endSessionEndpoint]', symObjAddr: 0x718, symBinAddr: 0x11A5C, symSize: 0x8 }
+  - { offset: 0x6A067, size: 0x8, addend: 0x0, symName: '-[OIDServiceConfiguration discoveryDocument]', symObjAddr: 0x720, symBinAddr: 0x11A64, symSize: 0x8 }
+  - { offset: 0x6A09E, size: 0x8, addend: 0x0, symName: '-[OIDServiceConfiguration .cxx_destruct]', symObjAddr: 0x728, symBinAddr: 0x11A6C, symSize: 0x60 }
+  - { offset: 0x6A158, size: 0x8, addend: 0x0, symName: '+[OIDRegistrationResponse fieldMap]', symObjAddr: 0x0, symBinAddr: 0x11ACC, symSize: 0x30 }
+  - { offset: 0x6A172, size: 0x8, addend: 0x0, symName: _OIDClientIDParam, symObjAddr: 0xCE8, symBinAddr: 0x20490, symSize: 0x0 }
+  - { offset: 0x6A192, size: 0x8, addend: 0x0, symName: _OIDClientIDIssuedAtParam, symObjAddr: 0xCF0, symBinAddr: 0x20498, symSize: 0x0 }
+  - { offset: 0x6A1A8, size: 0x8, addend: 0x0, symName: _OIDClientSecretParam, symObjAddr: 0xCF8, symBinAddr: 0x204A0, symSize: 0x0 }
+  - { offset: 0x6A1BE, size: 0x8, addend: 0x0, symName: _OIDClientSecretExpirestAtParam, symObjAddr: 0xD00, symBinAddr: 0x204A8, symSize: 0x0 }
+  - { offset: 0x6A1D4, size: 0x8, addend: 0x0, symName: _OIDRegistrationAccessTokenParam, symObjAddr: 0xD08, symBinAddr: 0x204B0, symSize: 0x0 }
+  - { offset: 0x6A1EA, size: 0x8, addend: 0x0, symName: _OIDRegistrationClientURIParam, symObjAddr: 0xD10, symBinAddr: 0x204B8, symSize: 0x0 }
+  - { offset: 0x6A1F4, size: 0x8, addend: 0x0, symName: '+[OIDRegistrationResponse fieldMap]', symObjAddr: 0x0, symBinAddr: 0x11ACC, symSize: 0x30 }
+  - { offset: 0x6A21E, size: 0x8, addend: 0x0, symName: _fieldMap.fieldMap, symObjAddr: 0x4D40, symBinAddr: 0x291B8, symSize: 0x0 }
+  - { offset: 0x6A234, size: 0x8, addend: 0x0, symName: _fieldMap.onceToken, symObjAddr: 0x4D48, symBinAddr: 0x291C0, symSize: 0x0 }
+  - { offset: 0x6A456, size: 0x8, addend: 0x0, symName: '+[OIDRegistrationResponse fieldMap].cold.1', symObjAddr: 0x850, symBinAddr: 0x13F98, symSize: 0x14 }
+  - { offset: 0x6A472, size: 0x8, addend: 0x0, symName: '+[OIDRegistrationResponse fieldMap].cold.1', symObjAddr: 0x850, symBinAddr: 0x13F98, symSize: 0x14 }
+  - { offset: 0x6A484, size: 0x8, addend: 0x0, symName: '___35+[OIDRegistrationResponse fieldMap]_block_invoke', symObjAddr: 0x30, symBinAddr: 0x11AFC, symSize: 0x2CC }
+  - { offset: 0x6A4AB, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationResponse init]', symObjAddr: 0x2FC, symBinAddr: 0x11DC8, symSize: 0xA4 }
+  - { offset: 0x6A53D, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationResponse initWithRequest:parameters:]', symObjAddr: 0x3A0, symBinAddr: 0x11E6C, symSize: 0x13C }
+  - { offset: 0x6A5B3, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationResponse copyWithZone:]', symObjAddr: 0x4DC, symBinAddr: 0x11FA8, symSize: 0x4 }
+  - { offset: 0x6A5F4, size: 0x8, addend: 0x0, symName: '+[OIDRegistrationResponse supportsSecureCoding]', symObjAddr: 0x4E0, symBinAddr: 0x11FAC, symSize: 0x8 }
+  - { offset: 0x6A627, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationResponse initWithCoder:]', symObjAddr: 0x4E8, symBinAddr: 0x11FB4, symSize: 0x11C }
+  - { offset: 0x6A67E, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationResponse encodeWithCoder:]', symObjAddr: 0x604, symBinAddr: 0x120D0, symSize: 0x98 }
+  - { offset: 0x6A6C1, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationResponse description]', symObjAddr: 0x69C, symBinAddr: 0x12168, symSize: 0xE8 }
+  - { offset: 0x6A72C, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationResponse request]', symObjAddr: 0x784, symBinAddr: 0x12250, symSize: 0x8 }
+  - { offset: 0x6A763, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationResponse clientID]', symObjAddr: 0x78C, symBinAddr: 0x12258, symSize: 0x8 }
+  - { offset: 0x6A79A, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationResponse clientIDIssuedAt]', symObjAddr: 0x794, symBinAddr: 0x12260, symSize: 0x8 }
+  - { offset: 0x6A7D1, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationResponse clientSecret]', symObjAddr: 0x79C, symBinAddr: 0x12268, symSize: 0x8 }
+  - { offset: 0x6A808, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationResponse clientSecretExpiresAt]', symObjAddr: 0x7A4, symBinAddr: 0x12270, symSize: 0x8 }
+  - { offset: 0x6A83F, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationResponse registrationAccessToken]', symObjAddr: 0x7AC, symBinAddr: 0x12278, symSize: 0x8 }
+  - { offset: 0x6A876, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationResponse registrationClientURI]', symObjAddr: 0x7B4, symBinAddr: 0x12280, symSize: 0x8 }
+  - { offset: 0x6A8AD, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationResponse tokenEndpointAuthenticationMethod]', symObjAddr: 0x7BC, symBinAddr: 0x12288, symSize: 0x8 }
+  - { offset: 0x6A8E4, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationResponse additionalParameters]', symObjAddr: 0x7C4, symBinAddr: 0x12290, symSize: 0x8 }
+  - { offset: 0x6A91B, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationResponse .cxx_destruct]', symObjAddr: 0x7CC, symBinAddr: 0x12298, symSize: 0x84 }
+  - { offset: 0x6AA37, size: 0x8, addend: 0x0, symName: '+[OIDURLSessionProvider session]', symObjAddr: 0x0, symBinAddr: 0x1231C, symSize: 0x4C }
+  - { offset: 0x6AA51, size: 0x8, addend: 0x0, symName: _gURLSession, symObjAddr: 0xCB0, symBinAddr: 0x291C8, symSize: 0x0 }
+  - { offset: 0x6AA60, size: 0x8, addend: 0x0, symName: '+[OIDURLSessionProvider session]', symObjAddr: 0x0, symBinAddr: 0x1231C, symSize: 0x4C }
+  - { offset: 0x6AA93, size: 0x8, addend: 0x0, symName: '+[OIDURLSessionProvider setSession:]', symObjAddr: 0x4C, symBinAddr: 0x12368, symSize: 0x10 }
+  - { offset: 0x6AB39, size: 0x8, addend: 0x0, symName: _OIDScopeOpenID, symObjAddr: 0xC8, symBinAddr: 0x204E0, symSize: 0x0 }
+  - { offset: 0x6AB59, size: 0x8, addend: 0x0, symName: _OIDScopeProfile, symObjAddr: 0xD0, symBinAddr: 0x204E8, symSize: 0x0 }
+  - { offset: 0x6AB6F, size: 0x8, addend: 0x0, symName: _OIDScopeEmail, symObjAddr: 0xD8, symBinAddr: 0x204F0, symSize: 0x0 }
+  - { offset: 0x6AB85, size: 0x8, addend: 0x0, symName: _OIDScopeAddress, symObjAddr: 0xE0, symBinAddr: 0x204F8, symSize: 0x0 }
+  - { offset: 0x6AB9B, size: 0x8, addend: 0x0, symName: _OIDScopePhone, symObjAddr: 0xE8, symBinAddr: 0x20500, symSize: 0x0 }
+  - { offset: 0x6ABD3, size: 0x8, addend: 0x0, symName: '+[OIDScopeUtilities disallowedScopeCharacters]', symObjAddr: 0x0, symBinAddr: 0x12378, symSize: 0x30 }
+  - { offset: 0x6ABE1, size: 0x8, addend: 0x0, symName: '+[OIDScopeUtilities disallowedScopeCharacters]', symObjAddr: 0x0, symBinAddr: 0x12378, symSize: 0x30 }
+  - { offset: 0x6AC0B, size: 0x8, addend: 0x0, symName: _disallowedScopeCharacters.disallowedCharacters, symObjAddr: 0x1BC8, symBinAddr: 0x291D0, symSize: 0x0 }
+  - { offset: 0x6AC21, size: 0x8, addend: 0x0, symName: _disallowedScopeCharacters.onceToken, symObjAddr: 0x1BD0, symBinAddr: 0x291D8, symSize: 0x0 }
+  - { offset: 0x6ACA3, size: 0x8, addend: 0x0, symName: '+[OIDScopeUtilities disallowedScopeCharacters].cold.1', symObjAddr: 0xCC, symBinAddr: 0x13FAC, symSize: 0x14 }
+  - { offset: 0x6ACBF, size: 0x8, addend: 0x0, symName: '+[OIDScopeUtilities disallowedScopeCharacters].cold.1', symObjAddr: 0xCC, symBinAddr: 0x13FAC, symSize: 0x14 }
+  - { offset: 0x6ACD1, size: 0x8, addend: 0x0, symName: '___46+[OIDScopeUtilities disallowedScopeCharacters]_block_invoke', symObjAddr: 0x30, symBinAddr: 0x123A8, symSize: 0x7C }
+  - { offset: 0x6AD17, size: 0x8, addend: 0x0, symName: '+[OIDScopeUtilities scopesWithArray:]', symObjAddr: 0xAC, symBinAddr: 0x12424, symSize: 0x10 }
+  - { offset: 0x6AD66, size: 0x8, addend: 0x0, symName: '+[OIDScopeUtilities scopesArrayWithString:]', symObjAddr: 0xBC, symBinAddr: 0x12434, symSize: 0x10 }
+  - { offset: 0x6AE92, size: 0x8, addend: 0x0, symName: _OIDGrantTypeAuthorizationCode, symObjAddr: 0xC0, symBinAddr: 0x20528, symSize: 0x0 }
+  - { offset: 0x6AEB2, size: 0x8, addend: 0x0, symName: _OIDGrantTypeRefreshToken, symObjAddr: 0xC8, symBinAddr: 0x20530, symSize: 0x0 }
+  - { offset: 0x6AEC8, size: 0x8, addend: 0x0, symName: _OIDGrantTypePassword, symObjAddr: 0xD0, symBinAddr: 0x20538, symSize: 0x0 }
+  - { offset: 0x6AEDE, size: 0x8, addend: 0x0, symName: _OIDGrantTypeClientCredentials, symObjAddr: 0xD8, symBinAddr: 0x20540, symSize: 0x0 }
+  - { offset: 0x6AF16, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationRequest init]', symObjAddr: 0x0, symBinAddr: 0x12444, symSize: 0xA4 }
+  - { offset: 0x6AF2E, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationRequest URLRequest]', symObjAddr: 0x860, symBinAddr: 0x12CA4, symSize: 0x128 }
+  - { offset: 0x6B166, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationRequest init]', symObjAddr: 0x0, symBinAddr: 0x12444, symSize: 0xA4 }
+  - { offset: 0x6B1F8, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationRequest initWithConfiguration:redirectURIs:responseTypes:grantTypes:subjectType:tokenEndpointAuthMethod:additionalParameters:]', symObjAddr: 0xA4, symBinAddr: 0x124E8, symSize: 0x24 }
+  - { offset: 0x6B29E, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationRequest initWithConfiguration:redirectURIs:responseTypes:grantTypes:subjectType:tokenEndpointAuthMethod:initialAccessToken:additionalParameters:]', symObjAddr: 0xC8, symBinAddr: 0x1250C, symSize: 0x208 }
+  - { offset: 0x6B353, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationRequest copyWithZone:]', symObjAddr: 0x2D0, symBinAddr: 0x12714, symSize: 0x4 }
+  - { offset: 0x6B394, size: 0x8, addend: 0x0, symName: '+[OIDRegistrationRequest supportsSecureCoding]', symObjAddr: 0x2D4, symBinAddr: 0x12718, symSize: 0x8 }
+  - { offset: 0x6B3C7, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationRequest initWithCoder:]', symObjAddr: 0x2DC, symBinAddr: 0x12720, symSize: 0x3B0 }
+  - { offset: 0x6B49E, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationRequest encodeWithCoder:]', symObjAddr: 0x68C, symBinAddr: 0x12AD0, symSize: 0xD8 }
+  - { offset: 0x6B4E1, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationRequest description]', symObjAddr: 0x764, symBinAddr: 0x12BA8, symSize: 0xFC }
+  - { offset: 0x6B56C, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationRequest JSONString]', symObjAddr: 0x988, symBinAddr: 0x12DCC, symSize: 0x26C }
+  - { offset: 0x6B602, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationRequest configuration]', symObjAddr: 0xBF4, symBinAddr: 0x13038, symSize: 0x8 }
+  - { offset: 0x6B639, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationRequest initialAccessToken]', symObjAddr: 0xBFC, symBinAddr: 0x13040, symSize: 0x8 }
+  - { offset: 0x6B670, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationRequest applicationType]', symObjAddr: 0xC04, symBinAddr: 0x13048, symSize: 0x8 }
+  - { offset: 0x6B6A7, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationRequest redirectURIs]', symObjAddr: 0xC0C, symBinAddr: 0x13050, symSize: 0x8 }
+  - { offset: 0x6B6DE, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationRequest responseTypes]', symObjAddr: 0xC14, symBinAddr: 0x13058, symSize: 0x8 }
+  - { offset: 0x6B715, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationRequest grantTypes]', symObjAddr: 0xC1C, symBinAddr: 0x13060, symSize: 0x8 }
+  - { offset: 0x6B74C, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationRequest subjectType]', symObjAddr: 0xC24, symBinAddr: 0x13068, symSize: 0x8 }
+  - { offset: 0x6B783, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationRequest tokenEndpointAuthenticationMethod]', symObjAddr: 0xC2C, symBinAddr: 0x13070, symSize: 0x8 }
+  - { offset: 0x6B7BA, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationRequest additionalParameters]', symObjAddr: 0xC34, symBinAddr: 0x13078, symSize: 0x8 }
+  - { offset: 0x6B7F1, size: 0x8, addend: 0x0, symName: '-[OIDRegistrationRequest .cxx_destruct]', symObjAddr: 0xC3C, symBinAddr: 0x13080, symSize: 0x84 }
+  - { offset: 0x6B8D0, size: 0x8, addend: 0x0, symName: _OIDResponseTypeCode, symObjAddr: 0x78, symBinAddr: 0x20548, symSize: 0x0 }
+  - { offset: 0x6B8F0, size: 0x8, addend: 0x0, symName: _OIDResponseTypeToken, symObjAddr: 0x80, symBinAddr: 0x20550, symSize: 0x0 }
+  - { offset: 0x6B906, size: 0x8, addend: 0x0, symName: _OIDResponseTypeIDToken, symObjAddr: 0x88, symBinAddr: 0x20558, symSize: 0x0 }
+  - { offset: 0x6B93E, size: 0x8, addend: 0x0, symName: '+[OIDAuthorizationResponse fieldMap]', symObjAddr: 0x0, symBinAddr: 0x13104, symSize: 0x30 }
+  - { offset: 0x6B951, size: 0x8, addend: 0x0, symName: '+[OIDAuthorizationResponse fieldMap]', symObjAddr: 0x0, symBinAddr: 0x13104, symSize: 0x30 }
+  - { offset: 0x6B97B, size: 0x8, addend: 0x0, symName: _fieldMap.fieldMap, symObjAddr: 0x54E0, symBinAddr: 0x291E0, symSize: 0x0 }
+  - { offset: 0x6B991, size: 0x8, addend: 0x0, symName: _fieldMap.onceToken, symObjAddr: 0x54E8, symBinAddr: 0x291E8, symSize: 0x0 }
+  - { offset: 0x6BBD6, size: 0x8, addend: 0x0, symName: '+[OIDAuthorizationResponse fieldMap].cold.1', symObjAddr: 0x998, symBinAddr: 0x13FC0, symSize: 0x14 }
+  - { offset: 0x6BBF2, size: 0x8, addend: 0x0, symName: '+[OIDAuthorizationResponse fieldMap].cold.1', symObjAddr: 0x998, symBinAddr: 0x13FC0, symSize: 0x14 }
+  - { offset: 0x6BC04, size: 0x8, addend: 0x0, symName: '___36+[OIDAuthorizationResponse fieldMap]_block_invoke', symObjAddr: 0x30, symBinAddr: 0x13134, symSize: 0x250 }
+  - { offset: 0x6BC2B, size: 0x8, addend: 0x0, symName: '___36+[OIDAuthorizationResponse fieldMap]_block_invoke_2', symObjAddr: 0x280, symBinAddr: 0x13384, symSize: 0x80 }
+  - { offset: 0x6BC81, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationResponse init]', symObjAddr: 0x300, symBinAddr: 0x13404, symSize: 0xA4 }
+  - { offset: 0x6BD13, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationResponse initWithRequest:parameters:]', symObjAddr: 0x3A4, symBinAddr: 0x134A8, symSize: 0xF4 }
+  - { offset: 0x6BD89, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationResponse copyWithZone:]', symObjAddr: 0x498, symBinAddr: 0x1359C, symSize: 0x4 }
+  - { offset: 0x6BDCA, size: 0x8, addend: 0x0, symName: '+[OIDAuthorizationResponse supportsSecureCoding]', symObjAddr: 0x49C, symBinAddr: 0x135A0, symSize: 0x8 }
+  - { offset: 0x6BDFD, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationResponse initWithCoder:]', symObjAddr: 0x4A4, symBinAddr: 0x135A8, symSize: 0x11C }
+  - { offset: 0x6BE54, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationResponse encodeWithCoder:]', symObjAddr: 0x5C0, symBinAddr: 0x136C4, symSize: 0x98 }
+  - { offset: 0x6BE97, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationResponse description]', symObjAddr: 0x658, symBinAddr: 0x1375C, symSize: 0xF4 }
+  - { offset: 0x6BF02, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationResponse tokenExchangeRequest]', symObjAddr: 0x74C, symBinAddr: 0x13850, symSize: 0xC }
+  - { offset: 0x6BF37, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationResponse tokenExchangeRequestWithAdditionalParameters:]', symObjAddr: 0x758, symBinAddr: 0x1385C, symSize: 0x8 }
+  - { offset: 0x6BF7A, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationResponse tokenExchangeRequestWithAdditionalParameters:additionalHeaders:]', symObjAddr: 0x760, symBinAddr: 0x13864, symSize: 0x16C }
+  - { offset: 0x6BFD1, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationResponse request]', symObjAddr: 0x8CC, symBinAddr: 0x139D0, symSize: 0x8 }
+  - { offset: 0x6C008, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationResponse authorizationCode]', symObjAddr: 0x8D4, symBinAddr: 0x139D8, symSize: 0x8 }
+  - { offset: 0x6C03F, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationResponse state]', symObjAddr: 0x8DC, symBinAddr: 0x139E0, symSize: 0x8 }
+  - { offset: 0x6C076, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationResponse accessToken]', symObjAddr: 0x8E4, symBinAddr: 0x139E8, symSize: 0x8 }
+  - { offset: 0x6C0AD, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationResponse accessTokenExpirationDate]', symObjAddr: 0x8EC, symBinAddr: 0x139F0, symSize: 0x8 }
+  - { offset: 0x6C0E4, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationResponse tokenType]', symObjAddr: 0x8F4, symBinAddr: 0x139F8, symSize: 0x8 }
+  - { offset: 0x6C11B, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationResponse idToken]', symObjAddr: 0x8FC, symBinAddr: 0x13A00, symSize: 0x8 }
+  - { offset: 0x6C152, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationResponse scope]', symObjAddr: 0x904, symBinAddr: 0x13A08, symSize: 0x8 }
+  - { offset: 0x6C189, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationResponse additionalParameters]', symObjAddr: 0x90C, symBinAddr: 0x13A10, symSize: 0x8 }
+  - { offset: 0x6C1C0, size: 0x8, addend: 0x0, symName: '-[OIDAuthorizationResponse .cxx_destruct]', symObjAddr: 0x914, symBinAddr: 0x13A18, symSize: 0x84 }
+  - { offset: 0x6C3F4, size: 0x8, addend: 0x0, symName: _OIDGeneralErrorDomain, symObjAddr: 0x350, symBinAddr: 0x205A0, symSize: 0x0 }
+  - { offset: 0x6C414, size: 0x8, addend: 0x0, symName: _OIDOAuthTokenErrorDomain, symObjAddr: 0x358, symBinAddr: 0x205A8, symSize: 0x0 }
+  - { offset: 0x6C42A, size: 0x8, addend: 0x0, symName: _OIDOAuthAuthorizationErrorDomain, symObjAddr: 0x360, symBinAddr: 0x205B0, symSize: 0x0 }
+  - { offset: 0x6C440, size: 0x8, addend: 0x0, symName: _OIDOAuthRegistrationErrorDomain, symObjAddr: 0x368, symBinAddr: 0x205B8, symSize: 0x0 }
+  - { offset: 0x6C456, size: 0x8, addend: 0x0, symName: _OIDResourceServerAuthorizationErrorDomain, symObjAddr: 0x370, symBinAddr: 0x205C0, symSize: 0x0 }
+  - { offset: 0x6C46C, size: 0x8, addend: 0x0, symName: _OIDHTTPErrorDomain, symObjAddr: 0x378, symBinAddr: 0x205C8, symSize: 0x0 }
+  - { offset: 0x6C482, size: 0x8, addend: 0x0, symName: _OIDOAuthExceptionInvalidAuthorizationFlow, symObjAddr: 0x380, symBinAddr: 0x205D0, symSize: 0x0 }
+  - { offset: 0x6C498, size: 0x8, addend: 0x0, symName: _OIDOAuthExceptionInvalidTokenRequestNullRedirectURL, symObjAddr: 0x388, symBinAddr: 0x205D8, symSize: 0x0 }
+  - { offset: 0x6C4AE, size: 0x8, addend: 0x0, symName: _OIDOAuthErrorResponseErrorKey, symObjAddr: 0x390, symBinAddr: 0x205E0, symSize: 0x0 }
+  - { offset: 0x6C4C4, size: 0x8, addend: 0x0, symName: _OIDOAuthErrorFieldError, symObjAddr: 0x398, symBinAddr: 0x205E8, symSize: 0x0 }
+  - { offset: 0x6C4DA, size: 0x8, addend: 0x0, symName: _OIDOAuthErrorFieldErrorDescription, symObjAddr: 0x3A0, symBinAddr: 0x205F0, symSize: 0x0 }
+  - { offset: 0x6C4F0, size: 0x8, addend: 0x0, symName: _OIDOAuthErrorFieldErrorURI, symObjAddr: 0x3A8, symBinAddr: 0x205F8, symSize: 0x0 }
+...

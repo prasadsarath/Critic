@@ -1,0 +1,43 @@
+{
+  "commitish" : "145104f5ea9d58ae21b60add007c33c1cc0c948e",
+  "tvOS" : [
+
+  ],
+  "Mac" : [
+    {
+      "name" : "AppAuth",
+      "container" : "AppAuth.xcframework",
+      "hash" : "de6e0887edbe2f8736b6b0c3a637f2390eec452063b8e9a7c8becee4de546c77",
+      "identifier" : "macos-arm64_x86_64"
+    }
+  ],
+  "iOS" : [
+    {
+      "name" : "AppAuth",
+      "container" : "AppAuth.xcframework",
+      "hash" : "78cb08e2d643ee0cca0b0a0d3abf1d2c57549851a1833acdda8698b473248c90",
+      "identifier" : "ios-arm64"
+    },
+    {
+      "name" : "AppAuth",
+      "container" : "AppAuth.xcframework",
+      "hash" : "f5f703857fc6a77769313c5611309706ee2bb916a07902d9aee623dd1c41b6b1",
+      "identifier" : "ios-arm64_x86_64-simulator"
+    },
+    {
+      "name" : "AppAuthCore",
+      "container" : "AppAuthCore.xcframework",
+      "hash" : "ae9502a7175004ae22ba1575e21cd0466ec99c501469953dab02e66f70ccd3f2",
+      "identifier" : "ios-arm64"
+    },
+    {
+      "name" : "AppAuthCore",
+      "container" : "AppAuthCore.xcframework",
+      "hash" : "b41dba5344e41ad97d7a7008f2d8813000f92271e4626b45f3124fb98f57ab8a",
+      "identifier" : "ios-arm64_x86_64-simulator"
+    }
+  ],
+  "watchOS" : [
+
+  ]
+}

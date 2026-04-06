@@ -8,3 +8,9 @@ Critic.xcodeproj/project.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
 DerivedData/
 build/
 .git.backup-*/
+
+!Carthage/
+!Carthage/Build/
+!Carthage/Build/.AppAuth-iOS.version
+!Carthage/Build/AppAuth.xcframework/
+!Carthage/Build/AppAuth.xcframework/**
