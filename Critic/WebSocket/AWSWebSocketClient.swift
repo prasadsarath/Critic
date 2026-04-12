@@ -298,6 +298,18 @@ final class AWSWebSocketClient: NSObject, ObservableObject {
     }
 
     // MARK: - Convenience payloads (match Lambda actions)
+    /// Sends the user's current location to the nearby socket backend.
+    ///
+    /// The payload contains the existing websocket contract fields only, while optional identity
+    /// fields are included when present so nearby users can be rendered without extra lookups.
+    ///
+    /// - Parameters:
+    ///   - userId: The authenticated user identifier.
+    ///   - latitude: The latitude being published to the socket backend.
+    ///   - longitude: The longitude being published to the socket backend.
+    ///   - displayName: The optional display name attached to the update.
+    ///   - email: The optional email attached to the update.
+    ///   - profileUrl: The optional profile image URL attached to the update.
     func sendUpdateLocation(
         userId: String,
         latitude: Double,
@@ -321,9 +333,25 @@ final class AWSWebSocketClient: NSObject, ObservableObject {
         if let profileUrl, !profileUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             payload["profile_url"] = profileUrl
         }
+        if let payloadText = encodedText(for: payload) {
+            print("[WS] Sending updateLocation payload: \(payloadText)")
+        }
         send(json: payload)
     }
 
+    /// Requests the current nearby-user list from the socket backend.
+    ///
+    /// This call reuses the same location payload shape as `sendUpdateLocation` and adds the
+    /// search radius so the backend can resolve the current nearby set around the device.
+    ///
+    /// - Parameters:
+    ///   - userId: The authenticated user identifier.
+    ///   - latitude: The latitude used as the nearby search center.
+    ///   - longitude: The longitude used as the nearby search center.
+    ///   - radiusMeters: The nearby search radius in meters.
+    ///   - displayName: The optional display name attached to the request.
+    ///   - email: The optional email attached to the request.
+    ///   - profileUrl: The optional profile image URL attached to the request.
     func sendGetNearbyUsers(
         userId: String,
         latitude: Double,
@@ -349,10 +377,19 @@ final class AWSWebSocketClient: NSObject, ObservableObject {
         if let profileUrl, !profileUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             payload["profile_url"] = profileUrl
         }
+        if let payloadText = encodedText(for: payload) {
+            print("[WS] Sending getNearbyUsers payload: \(payloadText)")
+        }
         send(json: payload)
     }
 
     // MARK: - Private
+    /// Encodes and sends a websocket JSON payload.
+    ///
+    /// The dictionary is transformed into a UTF-8 JSON string before being forwarded to the lower
+    /// level text-sending path used by the socket task.
+    ///
+    /// - Parameter json: The JSON payload dictionary to send.
     private func send(json: [String: Any]) {
         guard let text = encodedText(for: json) else {
             log("send(json:) encoding error")
@@ -361,6 +398,13 @@ final class AWSWebSocketClient: NSObject, ObservableObject {
         send(text: text)
     }
 
+    /// Converts a payload dictionary into a JSON string.
+    ///
+    /// The returned string is used both for websocket transmission and for human-readable debug
+    /// logging of the final payload leaving the app.
+    ///
+    /// - Parameter json: The dictionary payload to encode.
+    /// - Returns: A UTF-8 JSON string representation of the payload, or `nil` if encoding fails.
     private func encodedText(for json: [String: Any]) -> String? {
         guard let data = try? JSONSerialization.data(withJSONObject: json),
               let text = String(data: data, encoding: .utf8) else {

@@ -16,6 +16,15 @@ struct Theme {
     static let info = CriticPalette.info
 }
 
+enum NearbyLocationPolicy {
+    static let maxHorizontalAccuracy: CLLocationAccuracy = 10
+    static let maxIncomingLocationAge: TimeInterval = 3
+    static let maxLiveLocationAge: TimeInterval = 5
+    static let maxStoredLocationAge: TimeInterval = 15
+    static let smoothingWindowSize = 5
+    static let temporaryFullAccuracyPurposeKey = "NearbyPrecisionLocation"
+}
+
 enum DisplayNameResolver {
     static func resolve(displayName: String?, email: String? = nil, phone: String? = nil, userId: String?) -> String {
         if let name = preferredName(displayName, userId: userId) {
@@ -434,39 +443,124 @@ struct UserLocation: Identifiable, Hashable {
     }
 }
 
-private enum NearbyLocationStorageKey {
+enum NearbyLocationStorageKey {
     static let latitude = "lastKnownLatitude"
     static let longitude = "lastKnownLongitude"
+    static let horizontalAccuracy = "lastKnownHorizontalAccuracy"
+    static let timestamp = "lastKnownLocationTimestamp"
 }
 
+/// Checks whether raw latitude and longitude values are usable for nearby calculations.
+///
+/// Rejects non-finite values, out-of-range coordinates, and the default zero-value placeholder
+/// so distance math is only attempted with valid geographic points.
+///
+/// - Parameters:
+///   - latitude: The latitude value to validate.
+///   - longitude: The longitude value to validate.
+/// - Returns: `true` when the coordinate is structurally valid for location work; otherwise `false`.
 private func hasUsableCoordinate(latitude: Double, longitude: Double) -> Bool {
     guard latitude.isFinite, longitude.isFinite else { return false }
     guard abs(latitude) <= 90, abs(longitude) <= 180 else { return false }
     return abs(latitude) > .ulpOfOne || abs(longitude) > .ulpOfOne
 }
 
-func currentStoredDeviceLocation() -> CLLocation? {
+/// Validates whether a `CLLocation` is accurate and fresh enough for nearby-user logic.
+///
+/// This helper combines coordinate sanity checks, `horizontalAccuracy` thresholds, and timestamp
+/// freshness so the same quality gate is applied to live GPS fixes and cached locations.
+///
+/// - Parameters:
+///   - location: The `CLLocation` being evaluated.
+///   - maxAge: The maximum allowed age, in seconds, for the location fix.
+///   - now: The reference time used to measure the fix age.
+/// - Returns: `true` when the location is recent and accurate enough for nearby detection.
+func isUsableNearbyLocation(
+    _ location: CLLocation,
+    maxAge: TimeInterval,
+    now: Date = Date()
+) -> Bool {
+    guard hasUsableCoordinate(
+        latitude: location.coordinate.latitude,
+        longitude: location.coordinate.longitude
+    ) else {
+        return false
+    }
+    guard location.horizontalAccuracy > 0,
+          location.horizontalAccuracy <= NearbyLocationPolicy.maxHorizontalAccuracy else {
+        return false
+    }
+    return abs(location.timestamp.timeIntervalSince(now)) <= maxAge
+}
+
+/// Loads the most recent persisted device location used by nearby features.
+///
+/// The stored fix is rebuilt from `UserDefaults` and then revalidated against the same freshness
+/// and accuracy policy as live GPS updates before it can be reused by the UI or socket layer.
+///
+/// - Parameters:
+///   - maxAge: The maximum age, in seconds, allowed for the stored location.
+///   - now: The reference time used to evaluate the stored timestamp.
+/// - Returns: A previously persisted `CLLocation`, or `nil` when the cached fix is missing or stale.
+func currentStoredDeviceLocation(
+    maxAge: TimeInterval = NearbyLocationPolicy.maxStoredLocationAge,
+    now: Date = Date()
+) -> CLLocation? {
     let defaults = UserDefaults.standard
     guard defaults.object(forKey: NearbyLocationStorageKey.latitude) != nil,
-          defaults.object(forKey: NearbyLocationStorageKey.longitude) != nil else {
+          defaults.object(forKey: NearbyLocationStorageKey.longitude) != nil,
+          defaults.object(forKey: NearbyLocationStorageKey.horizontalAccuracy) != nil,
+          defaults.object(forKey: NearbyLocationStorageKey.timestamp) != nil else {
         return nil
     }
 
     let latitude = defaults.double(forKey: NearbyLocationStorageKey.latitude)
     let longitude = defaults.double(forKey: NearbyLocationStorageKey.longitude)
-    guard hasUsableCoordinate(latitude: latitude, longitude: longitude) else { return nil }
-    return CLLocation(latitude: latitude, longitude: longitude)
+    let horizontalAccuracy = defaults.double(forKey: NearbyLocationStorageKey.horizontalAccuracy)
+    let timestamp = Date(timeIntervalSince1970: defaults.double(forKey: NearbyLocationStorageKey.timestamp))
+    let storedLocation = CLLocation(
+        coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
+        altitude: 0,
+        horizontalAccuracy: horizontalAccuracy,
+        verticalAccuracy: -1,
+        timestamp: timestamp
+    )
+    guard isUsableNearbyLocation(storedLocation, maxAge: maxAge, now: now) else { return nil }
+    return storedLocation
 }
 
+/// Resolves the best display name for a nearby user card.
+///
+/// The resolver prefers explicit names, then falls back to cached contact data and safe user labels
+/// so the nearby UI avoids leaking raw identifiers when better presentation data exists.
+///
+/// - Parameter user: The nearby user model to resolve.
+/// - Returns: The display name that should be shown in the UI.
 func resolvedUserDisplayName(_ user: UserLocation) -> String {
     DisplayNameResolver.resolve(displayName: user.displayName, email: user.email, phone: user.phone, userId: user.id)
 }
 
+/// Builds a deterministic seed for avatar rendering.
+///
+/// The seed prefers a user-facing name when available and falls back to stable identifiers so the
+/// same nearby user keeps a consistent generated avatar between refreshes.
+///
+/// - Parameter user: The nearby user whose avatar seed is needed.
+/// - Returns: A stable string used to derive avatar visuals.
 func resolvedUserSeed(_ user: UserLocation) -> String {
     let name = resolvedUserDisplayName(user)
     return name == "User" ? (user.email ?? user.id) : name
 }
 
+/// Computes the live distance from the current device location to another user.
+///
+/// This helper uses the current persisted device location when available and falls back to the
+/// server-provided distance when device coordinates are missing or unusable.
+///
+/// - Parameters:
+///   - user: The nearby user whose distance should be measured.
+///   - fallback: An optional distance supplied by the backend.
+/// - Returns: The measured distance in meters, or the fallback distance when live math is unavailable.
 func liveDistanceMeters(to user: UserLocation, fallback: Double? = nil) -> Double? {
     guard hasUsableCoordinate(latitude: user.latitude, longitude: user.longitude) else {
         return user.distanceMeters ?? fallback
@@ -479,6 +573,15 @@ func liveDistanceMeters(to user: UserLocation, fallback: Double? = nil) -> Doubl
     return current.distance(from: other)
 }
 
+/// Resolves the best distance value between two nearby users.
+///
+/// The function prefers direct coordinate-to-coordinate distance math, then falls back to the
+/// device-relative distance path, and finally returns zero only when no usable distance exists.
+///
+/// - Parameters:
+///   - centerUser: The reference user at the center of the nearby view.
+///   - user: The other nearby user whose distance should be displayed.
+/// - Returns: The resolved distance in meters for UI display.
 func resolvedDistanceMeters(from centerUser: UserLocation, to user: UserLocation) -> Double {
     if hasUsableCoordinate(latitude: centerUser.latitude, longitude: centerUser.longitude),
        hasUsableCoordinate(latitude: user.latitude, longitude: user.longitude) {
@@ -490,12 +593,28 @@ func resolvedDistanceMeters(from centerUser: UserLocation, to user: UserLocation
     return 0
 }
 
+/// Calculates geodesic distance between two nearby-user coordinates.
+///
+/// `CLLocation.distance(from:)` is used so the calculation stays in double precision and follows
+/// Apple's location math instead of hand-rolled planar distance estimates.
+///
+/// - Parameters:
+///   - from: The origin user.
+///   - to: The destination user.
+/// - Returns: The distance in meters between the two users.
 func calculateDistance(from: UserLocation, to: UserLocation) -> Double {
     let loc1 = CLLocation(latitude: from.latitude, longitude: from.longitude)
     let loc2 = CLLocation(latitude: to.latitude, longitude: to.longitude)
     return loc1.distance(from: loc2)
 }
 
+/// Formats a meter value for nearby-user UI labels.
+///
+/// Distances under one kilometer stay in meters, while longer distances are compacted into a
+/// one-decimal kilometer string for a cleaner list and profile presentation.
+///
+/// - Parameter meters: The raw distance in meters.
+/// - Returns: A user-facing distance string such as `42 m` or `1.3 km`.
 func homeFormatMeters(_ meters: Double) -> String {
     if meters >= 1000 { return String(format: "%.1f km", meters / 1000) }
     return String(format: "%.0f m", meters)

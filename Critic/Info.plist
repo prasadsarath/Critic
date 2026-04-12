@@ -19,6 +19,11 @@
 		<string>fb</string>
 		<string>snapchat</string>
 	</array>
+	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
+	<dict>
+		<key>NearbyPrecisionLocation</key>
+		<string>Critic temporarily uses your precise location to improve nearby user detection.</string>
+	</dict>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Fonts/Manrope-Bold.ttf</string>

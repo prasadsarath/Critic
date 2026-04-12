@@ -1541,6 +1541,16 @@ struct HomeView: View {
         }
     }
 
+    /// Pushes the current nearby-ready location to the socket and refreshes the nearby list.
+    ///
+    /// The function enforces the existing cooldown and movement thresholds, falls back to prompting
+    /// for location access when needed, and then sends the same websocket payload contract already
+    /// used by the backend for `updateLocation` and `getNearbyUsers`.
+    ///
+    /// - Parameters:
+    ///   - force: Skips cooldown and movement gating when `true`.
+    ///   - promptForLocation: Requests location access when no usable coordinate is currently available.
+    ///   - reason: A short debug label describing why the refresh was triggered.
     private func pushAndFetchNearby(force: Bool = false, promptForLocation: Bool = false, reason: String) {
         guard socket.state.isConnected else {
             pendingNearbyRefresh = PendingNearbyRefresh(
