@@ -121,6 +121,10 @@ private struct SelfProfileContent: View {
                 }
 
                 VStack(spacing: 18) {
+                    Text("How others see you")
+                        .font(.critic(.bodyStrong))
+                        .foregroundColor(CriticPalette.onSurface)
+
                     ZStack(alignment: .bottomTrailing) {
                         Group {
                             if hasCustomProfileImage {
@@ -153,21 +157,16 @@ private struct SelfProfileContent: View {
                         .offset(x: 6, y: 6)
                     }
 
+                    Text("When you post, you will appear as.")
+                        .font(.footnote)
+                        .foregroundColor(CriticPalette.onSurface)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+
                     Text(name)
                         .font(.critic(.display))
                         .foregroundColor(CriticPalette.onSurface)
                         .multilineTextAlignment(.center)
-
-                    Text(email)
-                        .font(.critic(.bodyStrong))
-                        .foregroundColor(CriticPalette.onSurface)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(
-                            Capsule(style: .continuous)
-                                .fill(CriticPalette.surface)
-                                .overlay(Capsule(style: .continuous).stroke(CriticPalette.outline, lineWidth: 1))
-                        )
                 }
                 .padding(18)
                 .criticCard()
@@ -485,6 +484,9 @@ private struct SelfProfileContent: View {
         }
         if let phoneNumber = trimmedValue(meVM.identity?.phoneNumber) {
             rows.append(("Phone", phoneNumber))
+        }
+        if let emailAddress = trimmedValue(meVM.identity?.email ?? email) {
+            rows.append(("Email", emailAddress))
         }
         if let emailVerified = meVM.identity?.emailVerified {
             rows.append(("Email Verified", emailVerified ? "Yes" : "No"))

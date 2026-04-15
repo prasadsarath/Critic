@@ -21,6 +21,8 @@ enum NearbyLocationPolicy {
     static let maxIncomingLocationAge: TimeInterval = 3
     static let maxLiveLocationAge: TimeInterval = 5
     static let maxStoredLocationAge: TimeInterval = 15
+    static let onlineFreshnessInterval: TimeInterval = 3
+    static let offlineRetentionInterval: TimeInterval = 10
     static let smoothingWindowSize = 5
     static let temporaryFullAccuracyPurposeKey = "NearbyPrecisionLocation"
 }
@@ -229,7 +231,8 @@ enum KnownUserDirectory {
             phone: resolvedPhone,
             profileUrl: user.profileUrl ?? profileUrl(for: user.id),
             distanceMeters: user.distanceMeters,
-            isSimulated: user.isSimulated
+            isSimulated: user.isSimulated,
+            lastSeenAt: user.lastSeenAt
         )
     }
 
@@ -352,11 +355,6 @@ struct AvatarView: View {
                 switch phase {
                 case .empty:
                     fallbackView
-                        .overlay(
-                            ProgressView()
-                                .controlSize(.small)
-                                .tint(tintColor.opacity(0.8))
-                        )
                 case .success(let image):
                     image
                         .resizable()
@@ -409,6 +407,7 @@ struct UserLocation: Identifiable, Hashable {
     let profileUrl: String?
     let distanceMeters: Double?
     let isSimulated: Bool?
+    let lastSeenAt: Date?
 
     static func == (lhs: UserLocation, rhs: UserLocation) -> Bool {
         lhs.id == rhs.id
@@ -428,7 +427,8 @@ struct UserLocation: Identifiable, Hashable {
         phone: String? = nil,
         profileUrl: String? = nil,
         distanceMeters: Double? = nil,
-        isSimulated: Bool? = nil
+        isSimulated: Bool? = nil,
+        lastSeenAt: Date? = nil
     ) {
         self.id = id
         self.latitude = latitude
@@ -440,7 +440,22 @@ struct UserLocation: Identifiable, Hashable {
         self.profileUrl = profileUrl
         self.distanceMeters = distanceMeters
         self.isSimulated = isSimulated
+        self.lastSeenAt = lastSeenAt
     }
+}
+
+private enum NearbyPresenceDateParser {
+    static let fractional: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    static let plain: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
 }
 
 enum NearbyLocationStorageKey {
@@ -529,6 +544,97 @@ func currentStoredDeviceLocation(
     return storedLocation
 }
 
+/// Loads the most recent persisted nearby location without applying a timestamp freshness gate.
+///
+/// This is used as a stationary foreground fallback so nearby heartbeats can continue even when
+/// Core Location pauses raw updates for a device that has not moved. Structural coordinate and
+/// accuracy checks still apply, but the stored timestamp is allowed to be older than the normal
+/// live/stored freshness thresholds.
+///
+/// - Returns: The last persisted `CLLocation`, or `nil` when cached values are missing or invalid.
+func lastPersistedNearbyLocation() -> CLLocation? {
+    let defaults = UserDefaults.standard
+    guard defaults.object(forKey: NearbyLocationStorageKey.latitude) != nil,
+          defaults.object(forKey: NearbyLocationStorageKey.longitude) != nil,
+          defaults.object(forKey: NearbyLocationStorageKey.horizontalAccuracy) != nil,
+          defaults.object(forKey: NearbyLocationStorageKey.timestamp) != nil else {
+        return nil
+    }
+
+    let latitude = defaults.double(forKey: NearbyLocationStorageKey.latitude)
+    let longitude = defaults.double(forKey: NearbyLocationStorageKey.longitude)
+    let horizontalAccuracy = defaults.double(forKey: NearbyLocationStorageKey.horizontalAccuracy)
+    let timestamp = Date(timeIntervalSince1970: defaults.double(forKey: NearbyLocationStorageKey.timestamp))
+    let storedLocation = CLLocation(
+        coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
+        altitude: 0,
+        horizontalAccuracy: horizontalAccuracy,
+        verticalAccuracy: -1,
+        timestamp: timestamp
+    )
+
+    guard hasUsableCoordinate(latitude: latitude, longitude: longitude) else { return nil }
+    guard horizontalAccuracy > 0,
+          horizontalAccuracy <= NearbyLocationPolicy.maxHorizontalAccuracy else {
+        return nil
+    }
+    return storedLocation
+}
+
+/// Parses a nearby-user freshness timestamp returned by the socket backend.
+///
+/// The websocket payload currently returns ISO 8601 strings with and without fractional seconds,
+/// so this helper normalizes both formats into `Date` values for client-side presence checks.
+///
+/// - Parameter rawValue: The raw timestamp string from the nearby-user payload.
+/// - Returns: A parsed `Date`, or `nil` when the timestamp is missing or malformed.
+func parseNearbyPresenceDate(_ rawValue: String?) -> Date? {
+    guard let rawValue = DisplayNameResolver.normalized(rawValue) else { return nil }
+    return NearbyPresenceDateParser.fractional.date(from: rawValue)
+        ?? NearbyPresenceDateParser.plain.date(from: rawValue)
+}
+
+/// Indicates whether a nearby user should be considered currently online.
+///
+/// Presence is derived from the latest server timestamp we have for the user, with a short client
+/// freshness window to tolerate one missed websocket cycle without instantly flipping offline.
+///
+/// - Parameters:
+///   - user: The nearby user whose presence should be evaluated.
+///   - now: The reference time used for freshness checks.
+/// - Returns: `true` when the user was seen recently enough to be treated as online.
+func isNearbyUserOnline(_ user: UserLocation, now: Date = Date()) -> Bool {
+    guard let lastSeenAt = user.lastSeenAt else { return false }
+    return abs(lastSeenAt.timeIntervalSince(now)) <= NearbyLocationPolicy.onlineFreshnessInterval
+}
+
+/// Indicates whether a nearby user should remain visible in the UI.
+///
+/// Users are retained briefly after their last server update so one missed nearby payload does not
+/// cause immediate flicker, but they still disappear after a short grace window.
+///
+/// - Parameters:
+///   - user: The nearby user whose visibility should be evaluated.
+///   - now: The reference time used for the grace-window calculation.
+/// - Returns: `true` when the user should still be shown in nearby UI.
+func shouldRetainNearbyUser(_ user: UserLocation, now: Date = Date()) -> Bool {
+    guard let lastSeenAt = user.lastSeenAt else { return true }
+    return abs(lastSeenAt.timeIntervalSince(now)) <= NearbyLocationPolicy.offlineRetentionInterval
+}
+
+/// Builds a user-facing online status label for nearby UI.
+///
+/// The label is intentionally binary so the map and list views can communicate presence clearly
+/// without exposing raw timestamps to the user.
+///
+/// - Parameters:
+///   - user: The nearby user whose status text is needed.
+///   - now: The reference time used for presence checks.
+/// - Returns: `"Online"` when the user is fresh enough; otherwise `"Offline"`.
+func nearbyPresenceLabel(for user: UserLocation, now: Date = Date()) -> String {
+    isNearbyUserOnline(user, now: now) ? "Online" : "Offline"
+}
+
 /// Resolves the best display name for a nearby user card.
 ///
 /// The resolver prefers explicit names, then falls back to cached contact data and safe user labels
@@ -583,6 +689,11 @@ func liveDistanceMeters(to user: UserLocation, fallback: Double? = nil) -> Doubl
 ///   - user: The other nearby user whose distance should be displayed.
 /// - Returns: The resolved distance in meters for UI display.
 func resolvedDistanceMeters(from centerUser: UserLocation, to user: UserLocation) -> Double {
+    if let backendDistance = user.distanceMeters,
+       backendDistance.isFinite,
+       backendDistance >= 0 {
+        return backendDistance
+    }
     if hasUsableCoordinate(latitude: centerUser.latitude, longitude: centerUser.longitude),
        hasUsableCoordinate(latitude: user.latitude, longitude: user.longitude) {
         return calculateDistance(from: centerUser, to: user)
@@ -617,6 +728,7 @@ func calculateDistance(from: UserLocation, to: UserLocation) -> Double {
 /// - Returns: A user-facing distance string such as `42 m` or `1.3 km`.
 func homeFormatMeters(_ meters: Double) -> String {
     if meters >= 1000 { return String(format: "%.1f km", meters / 1000) }
+    if meters < 10 { return String(format: "%.1f m", meters) }
     return String(format: "%.0f m", meters)
 }
 

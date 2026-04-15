@@ -59,7 +59,11 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
             return nil
         }
 
-        return currentStoredDeviceLocation(now: now)
+        if let storedLocation = currentStoredDeviceLocation(now: now) {
+            return storedLocation
+        }
+
+        return lastPersistedNearbyLocation()
     }
 
     /// Exposes the best available coordinate for nearby socket updates.

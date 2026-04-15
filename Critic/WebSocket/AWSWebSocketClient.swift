@@ -22,6 +22,7 @@ struct NearbyUser: Identifiable, Decodable, Equatable {
     let lon: Double
     let distanceM: Double?
     let isSimulated: Bool?
+    let updatedAt: String?
 
     private enum CodingKeys: String, CodingKey {
         case userId
@@ -67,6 +68,11 @@ struct NearbyUser: Identifiable, Decodable, Equatable {
         case distance
         case isSimulated
         case is_simulated
+        case updatedAt
+        case updated_at
+        case lastSeenAt
+        case last_seen_at
+        case timestamp
     }
 
     init(from decoder: Decoder) throws {
@@ -139,6 +145,7 @@ struct NearbyUser: Identifiable, Decodable, Equatable {
         self.lon = resolvedLon
         self.distanceM = firstDouble([.distanceM, .distance_m, .distanceMeters, .distance_meters, .distance])
         self.isSimulated = firstBool([.isSimulated, .is_simulated])
+        self.updatedAt = firstString([.updatedAt, .updated_at, .lastSeenAt, .last_seen_at, .timestamp])
     }
 }
 

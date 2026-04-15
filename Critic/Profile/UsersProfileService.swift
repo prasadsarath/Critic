@@ -319,7 +319,8 @@ enum UsersProfileService {
             phone: normalized(profile.phone) ?? fallback.phone,
             profileUrl: resolvedProfileURL(from: profile) ?? fallback.profileUrl,
             distanceMeters: fallback.distanceMeters,
-            isSimulated: fallback.isSimulated
+            isSimulated: fallback.isSimulated,
+            lastSeenAt: fallback.lastSeenAt
         )
     }
 

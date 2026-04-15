@@ -150,6 +150,8 @@ struct UsersListView: View {
                         let displayName = resolvedUserDisplayName(user)
                         let distance = resolvedDistanceMeters(from: centerUser, to: user)
                         let tagged = isTagged?(user) ?? false
+                        let presenceLabel = nearbyPresenceLabel(for: user)
+                        let isOnline = isNearbyUserOnline(user)
 
                         VStack(alignment: .leading, spacing: 12) {
                             HStack(spacing: 12) {
@@ -168,6 +170,7 @@ struct UsersListView: View {
                                         .foregroundColor(CriticPalette.onSurface)
                                     HStack(spacing: 8) {
                                         UserMetaChip(icon: "location", label: "\(homeFormatMeters(distance)) away", color: Theme.tint)
+                                        UserMetaChip(icon: "circle.fill", label: presenceLabel, color: isOnline ? Theme.success : Theme.subtleText)
                                         if tagged {
                                             UserMetaChip(icon: "tag", label: "Tagged", color: Theme.warning)
                                         }
@@ -302,6 +305,7 @@ struct RelativeUserMap: View {
                     let animDur = durationForMove(from: prevPoint, to: currentPoint)
                     let d = resolvedDistanceMeters(from: centerUser, to: user)
                     let isSelected = selectedUser == user
+                    let isOnline = isNearbyUserOnline(user)
 
                     ZStack(alignment: .top) {
                         VStack(spacing: 6) {
@@ -313,15 +317,23 @@ struct RelativeUserMap: View {
                                 backgroundColor: Theme.surface,
                                 tintColor: Theme.tint
                             )
+                            .opacity(isOnline ? 1 : 0.62)
                             .overlay(Circle().stroke(isSelected ? Theme.tint : .clear, lineWidth: 2))
+                            .overlay(alignment: .bottomTrailing) {
+                                Circle()
+                                    .fill(isOnline ? Theme.success : Theme.subtleText)
+                                    .frame(width: 11, height: 11)
+                                    .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                                    .offset(x: 1, y: 1)
+                            }
                             .onTapGesture {
                                 selectedUser = KnownUserDirectory.hydrated(user)
                                 selectedDistance = d
                             }
 
-                            Text("\(resolvedUserDisplayName(user)) · \(homeFormatMeters(d)) away")
+                            Text("\(resolvedUserDisplayName(user)) · \(homeFormatMeters(d)) · \(nearbyPresenceLabel(for: user))")
                                 .font(.critic(.caption))
-                                .foregroundColor(CriticPalette.onSurface)
+                                .foregroundColor(isOnline ? CriticPalette.onSurface : CriticPalette.onSurfaceMuted)
                                 .lineLimit(1)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 6)
@@ -768,12 +780,11 @@ struct HomeView: View {
     @State private var userLocations: [UserLocation] = []
     @StateObject private var socket = AWSWebSocketClient(config: AppConfig.socketConfig)
 
-    // UI throttling
+    // UI update stream
     @State private var nearbyCancellable: AnyCancellable?
-    private let uiUpdateDebounce: TimeInterval = 1.5
 
     // keep sim ticking
-    private let tick = Timer.publish(every: 3, on: .main, in: .common).autoconnect()
+    private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     @State private var selectedUser: UserLocation?
     @State private var selectedDistance: Double?
@@ -832,8 +843,11 @@ struct HomeView: View {
         let reason: String
     }
 
-    private let nearbyRefreshCooldown: TimeInterval = 1
-    private let nearbyRefreshDistanceThreshold: CLLocationDistance = 1
+    private let nearbyRefreshCooldown: TimeInterval = 0.25
+    private let nearbyRefreshDistanceThreshold: CLLocationDistance = 0.25
+    private var isRunningPreview: Bool {
+        ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
+    }
 
     init() {
         let appearance = UITabBarAppearance()
@@ -909,13 +923,23 @@ struct HomeView: View {
             )
         }
     }
-
-    private var allUsers: [UserLocation] { userLocations }
+    private var allUsers: [UserLocation] {
+        let now = Date()
+        return userLocations.filter { isNearbyUserOnline($0, now: now) }
+    }
     private var nearbyUsers: [UserLocation] {
-        allUsers.filter { resolvedDistanceMeters(from: centerUser, to: $0) <= 5_000 }
+        let now = Date()
+        return allUsers.filter {
+            isNearbyUserOnline($0, now: now) &&
+            resolvedDistanceMeters(from: centerUser, to: $0) <= 5_000
+        }
     }
     private var activeUsers: [UserLocation] {
         nearbyUsers.isEmpty ? allUsers : nearbyUsers
+    }
+    private var onlineActiveUsers: [UserLocation] {
+        let now = Date()
+        return activeUsers.filter { isNearbyUserOnline($0, now: now) }
     }
     private var isLocationDrivenTab: Bool {
         selectedTab == .home || selectedTab == .list
@@ -955,6 +979,28 @@ struct HomeView: View {
 
     private func hydrateUser(_ user: UserLocation) -> UserLocation {
         KnownUserDirectory.hydrated(user)
+    }
+
+    private func mergeNearbyUsers(
+        current _: [UserLocation],
+        incoming: [UserLocation],
+        now: Date = Date()
+    ) -> [UserLocation] {
+        return incoming.sorted { lhs, rhs in
+            let lhsOnline = isNearbyUserOnline(lhs, now: now)
+            let rhsOnline = isNearbyUserOnline(rhs, now: now)
+            if lhsOnline != rhsOnline {
+                return lhsOnline && !rhsOnline
+            }
+
+            let lhsDistance = resolvedDistanceMeters(from: centerUser, to: lhs)
+            let rhsDistance = resolvedDistanceMeters(from: centerUser, to: rhs)
+            if lhsDistance != rhsDistance {
+                return lhsDistance < rhsDistance
+            }
+
+            return resolvedUserDisplayName(lhs).localizedCaseInsensitiveCompare(resolvedUserDisplayName(rhs)) == .orderedAscending
+        }
     }
 
     private func resolvedDistance(for user: UserLocation) -> Double {
@@ -1089,9 +1135,10 @@ struct HomeView: View {
     }
 
     private var statusNearbyPill: some View {
-        CriticPill(
+        let onlineCount = onlineActiveUsers.count
+        return CriticPill(
             icon: "person.2",
-            label: "\(activeUsers.count) people in range",
+            label: "\(onlineCount) \(onlineCount == 1 ? "person" : "people") online in range",
             iconColor: Theme.tint
         )
     }
@@ -1256,9 +1303,22 @@ struct HomeView: View {
                 ) { EmptyView() }
             }
                 .navigationBarHidden(true)
-                .task { await meVM.loadIfNeeded() }
+                .task {
+                    guard !isRunningPreview else { return }
+                    await meVM.loadIfNeeded()
+                }
 
                 .onAppear {
+                    guard !isRunningPreview else {
+                        isHomeActive = false
+                        showBootHUD = false
+                        didShowReadyOnce = true
+                        if storedUserName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            storedUserName = "Preview"
+                        }
+                        return
+                    }
+
                     isHomeActive = true
 
                 if storedUserName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
@@ -1300,11 +1360,11 @@ struct HomeView: View {
 
                 if nearbyCancellable == nil {
                     nearbyCancellable = socket.$nearbyUsers
-                        .debounce(for: .seconds(uiUpdateDebounce), scheduler: RunLoop.main)
                         .sink { users in
+                            let receivedAt = Date()
                             KnownUserDirectory.rememberCurrentUserFromDefaults()
 
-                            let mappedUsers = users.map { item -> UserLocation in
+                            let incomingUsers = users.map { item -> UserLocation in
                                 let avatar = extractProfileURL(from: item) ?? KnownUserDirectory.profileUrl(for: item.userId)
                                 let cachedEmail = item.email ?? KnownUserDirectory.email(for: item.userId)
                                 let cachedPhone = item.phone ?? KnownUserDirectory.phone(for: item.userId)
@@ -1331,20 +1391,26 @@ struct HomeView: View {
                                     phone: cachedPhone,
                                     profileUrl: avatar,
                                     distanceMeters: item.distanceM,
-                                    isSimulated: item.isSimulated
+                                    isSimulated: item.isSimulated,
+                                    lastSeenAt: parseNearbyPresenceDate(item.updatedAt) ?? receivedAt
                                 )
                             }
-                            self.userLocations = mappedUsers
+                            let mergedUsers = self.mergeNearbyUsers(
+                                current: self.userLocations,
+                                incoming: incomingUsers,
+                                now: receivedAt
+                            )
+                            self.userLocations = mergedUsers
 
                             if let currentSelection = self.selectedUser,
-                               let refreshed = mappedUsers.first(where: { $0.id == currentSelection.id }) {
+                               let refreshed = mergedUsers.first(where: { $0.id == currentSelection.id }) {
                                 let hydrated = self.hydrateUser(refreshed)
                                 self.selectedUser = hydrated
                                 self.selectedDistance = self.resolvedDistance(for: hydrated)
                             }
 
                             if let navSelection = NavigationManager.shared.selectedUser,
-                               let refreshed = mappedUsers.first(where: { $0.id == navSelection.id }) {
+                               let refreshed = mergedUsers.first(where: { $0.id == navSelection.id }) {
                                 let hydrated = self.hydrateUser(refreshed)
                                 NavigationManager.shared.selectedUser = hydrated
                                 NavigationManager.shared.selectedDistance = self.resolvedDistance(for: hydrated)
@@ -1553,6 +1619,7 @@ struct HomeView: View {
     ///   - reason: A short debug label describing why the refresh was triggered.
     private func pushAndFetchNearby(force: Bool = false, promptForLocation: Bool = false, reason: String) {
         guard socket.state.isConnected else {
+            print("[WS] Nearby refresh pending (\(reason)): socket state=\(socket.state.shortText)")
             pendingNearbyRefresh = PendingNearbyRefresh(
                 force: force,
                 promptForLocation: promptForLocation,
@@ -1561,8 +1628,12 @@ struct HomeView: View {
             connectSocketIfReady()
             return
         }
-        guard let uid = UserDefaults.standard.string(forKey: "userId") else { return }
+        guard let uid = UserDefaults.standard.string(forKey: "userId") else {
+            print("[WS] Nearby refresh skipped (\(reason)): missing userId")
+            return
+        }
         guard let coord = locationManager.effectiveCoordinate else {
+            print("[WS] Nearby refresh skipped (\(reason)): missing effective coordinate")
             if promptForLocation {
                 locationManager.requestAccessIfNeeded()
             }
@@ -1607,7 +1678,7 @@ struct HomeView: View {
             profileUrl: currentProfileURL
         )
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
             self.socket.sendGetNearbyUsers(
                 userId: uid,
                 latitude: lat,
@@ -1617,6 +1688,21 @@ struct HomeView: View {
                 email: currentEmail,
                 profileUrl: currentProfileURL
             )
+        }
+
+        if force {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.65) {
+                guard self.isHomeActive, self.socket.state.isConnected else { return }
+                self.socket.sendGetNearbyUsers(
+                    userId: uid,
+                    latitude: lat,
+                    longitude: lon,
+                    radiusMeters: 15,
+                    displayName: currentName,
+                    email: currentEmail,
+                    profileUrl: currentProfileURL
+                )
+            }
         }
     }
 
@@ -1648,11 +1734,62 @@ struct HomeView: View {
 }
 
 // MARK: - Preview
+private struct AuthViewPreviewSnapshot: View {
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                PremiumHomeHeaderBar(
+                    title: "Hey Preview",
+                    address: "San Francisco, CA",
+                    avatarURLString: nil,
+                    avatarSeed: "preview"
+                ) {}
+
+                PremiumHeaderRefreshButton(
+                    action: {},
+                    isRefreshing: false
+                )
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 6)
+
+            Group {
+                if #available(iOS 16.0, *) {
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 12) {
+                            CriticPill(icon: "circle.fill", label: "Connected", iconColor: Theme.success)
+                            CriticPill(icon: "person.2", label: "3 people in range", iconColor: Theme.tint)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .center)
+
+                        VStack(alignment: .leading, spacing: 10) {
+                            CriticPill(icon: "circle.fill", label: "Connected", iconColor: Theme.success)
+                            CriticPill(icon: "person.2", label: "3 people in range", iconColor: Theme.tint)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .center)
+                    }
+                } else {
+                    HStack(spacing: 12) {
+                        CriticPill(icon: "circle.fill", label: "Connected", iconColor: Theme.success)
+                        CriticPill(icon: "person.2", label: "3 people in range", iconColor: Theme.tint)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 10)
+
+            Spacer()
+        }
+        .background(Theme.background)
+    }
+}
+
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-        Group {
-            HomeView().preferredColorScheme(.light)
-            HomeView().preferredColorScheme(.dark)
-        }
+        AuthViewPreviewSnapshot()
+            .preferredColorScheme(.light)
     }
 }
