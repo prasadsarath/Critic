@@ -10,6 +10,20 @@ import AppAuth
 import UIKit
 import Security
 
+enum SessionTerminationKind {
+    case standardLogout
+    case accountDeletion
+
+    var resetsOnboarding: Bool {
+        switch self {
+        case .standardLogout:
+            return false
+        case .accountDeletion:
+            return true
+        }
+    }
+}
+
 final class OIDCAuthManager: NSObject, ObservableObject {
     static let shared = OIDCAuthManager()
     private static let authStateAccount = "authState"
@@ -426,15 +440,29 @@ final class OIDCAuthManager: NSObject, ObservableObject {
         UserDefaults.standard.removeObject(forKey: "userProfileUrl")
     }
 
-    // MARK: - Sign Out (Hosted UI)
-    func signOut() {
-        UserDefaults.standard.set(true, forKey: "justLoggedOut")
-        UserDefaults.standard.set(false, forKey: "isLoggedIn")
+    func completeLocalLogout(
+        kind: SessionTerminationKind = .standardLogout,
+        markJustLoggedOut: Bool = true
+    ) {
+        let defaults = UserDefaults.standard
+        if markJustLoggedOut {
+            defaults.set(true, forKey: "justLoggedOut")
+        } else {
+            defaults.removeObject(forKey: "justLoggedOut")
+        }
+        defaults.set(false, forKey: "isLoggedIn")
+        if kind.resetsOnboarding {
+            defaults.set(false, forKey: "hasCompletedOnboarding")
+        }
+        clearAuthState()
+        NotificationCenter.default.post(name: .didLogout, object: nil)
+    }
 
+    // MARK: - Sign Out (Hosted UI)
+    func signOut(kind: SessionTerminationKind = .standardLogout) {
         guard let config = authState?.lastAuthorizationResponse.request.configuration else {
             print("[Logout] No config; local clear only.")
-            clearAuthState()
-            NotificationCenter.default.post(name: .didLogout, object: nil)
+            completeLocalLogout(kind: kind)
             return
         }
 
@@ -450,13 +478,11 @@ final class OIDCAuthManager: NSObject, ObservableObject {
         if let url = comps.url {
             print("[Logout] Opening fallback logout URL.")
             UIApplication.shared.open(url, options: [:]) { _ in
-                self.clearAuthState()
-                NotificationCenter.default.post(name: .didLogout, object: nil)
+                self.completeLocalLogout(kind: kind)
             }
         } else {
             print("⚠️ Could not form logout URL. Clearing locally.")
-            clearAuthState()
-            NotificationCenter.default.post(name: .didLogout, object: nil)
+            completeLocalLogout(kind: kind)
         }
     }
 }
@@ -583,6 +609,7 @@ private extension OIDCAuthManager {
         return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
     }
 
+    @discardableResult
     func logAndCacheTokens(prefix: String) -> Bool {
         let refreshToken = authState?.lastTokenResponse?.refreshToken
         let exp = authState?.lastTokenResponse?.accessTokenExpirationDate

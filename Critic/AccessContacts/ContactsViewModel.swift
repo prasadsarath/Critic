@@ -35,17 +35,26 @@ final class ContactsViewModel: ObservableObject {
 
     private let store = CNContactStore()
 
+    private var hasUsableAccess: Bool {
+        if permissionStatus == .authorized {
+            return true
+        }
+        if #available(iOS 18.0, *), permissionStatus == .limited {
+            return true
+        }
+        return false
+    }
+
     // MARK: Entry
     func bootstrap() async {
         await refreshPermission()
-        switch permissionStatus {
-        case .authorized:
+        if hasUsableAccess {
             await safeLoad()
-        case .notDetermined:
+        } else if permissionStatus == .notDetermined {
             errorMessage = nil
             registered = []
             invitable = []
-        default:
+        } else {
             errorMessage = deniedMessage
         }
     }
@@ -54,12 +63,11 @@ final class ContactsViewModel: ObservableObject {
 
     func requestAccessAndLoad() async {
         await requestPermissionLegacy()
-        switch permissionStatus {
-        case .authorized:
+        if hasUsableAccess {
             await safeLoad()
-        case .notDetermined:
+        } else if permissionStatus == .notDetermined {
             errorMessage = nil
-        default:
+        } else {
             errorMessage = deniedMessage
             registered = []
             invitable = []
@@ -104,7 +112,7 @@ final class ContactsViewModel: ObservableObject {
     }
 
     private func loadContactsAndLookup() async throws {
-        guard permissionStatus == .authorized else {
+        guard hasUsableAccess else {
             print("[ContactsVM] load skipped: not authorized")
             return
         }

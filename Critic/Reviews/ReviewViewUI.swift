@@ -104,19 +104,39 @@ struct FlatTabBar2: View {
 // MARK: - Row context
 private enum RowContext: Equatable {
     case received
-    case posted(isFutureScheduled: Bool, scheduledLabel: String?)
+    case posted(isFutureScheduled: Bool, scheduledText: String?, secondaryText: String?)
 }
 
-private struct ScheduleState {
-    let label: String
-    let tint: Color
+private struct ScheduleDisplay {
+    let isFuture: Bool
+    let scheduledText: String
+    let secondaryText: String?
 }
 
-private func scheduleState(for item: PostItem) -> ScheduleState? {
-    guard item.isscheduled == true, let d = parseDate(item.ScheduledTime) else { return nil }
-    let text = "Scheduled • \(relative(d))"
-    let tint: Color = (d > Date()) ? .orange : .gray
-    return .init(label: text, tint: tint)
+private func absoluteTimestampString(for date: Date) -> String {
+    DateFormatter.localizedString(from: date, dateStyle: .medium, timeStyle: .short)
+}
+
+private func scheduleDisplay(for item: PostItem) -> ScheduleDisplay? {
+    guard item.isscheduled == true, let scheduledDate = parseDate(item.ScheduledTime) else { return nil }
+
+    let isFuture = scheduledDate > Date()
+    let scheduledText = "Scheduled: \(absoluteTimestampString(for: scheduledDate))"
+
+    let secondaryText: String?
+    if let createdDate = parseDate(item.createdAt) {
+        if isFuture {
+            secondaryText = "Queued: \(absoluteTimestampString(for: createdDate))"
+        } else if createdDate.timeIntervalSince(scheduledDate) >= -60 {
+            secondaryText = "Delivered: \(absoluteTimestampString(for: createdDate))"
+        } else {
+            secondaryText = nil
+        }
+    } else {
+        secondaryText = nil
+    }
+
+    return .init(isFuture: isFuture, scheduledText: scheduledText, secondaryText: secondaryText)
 }
 
 private struct FeedParty {
@@ -206,6 +226,9 @@ private func preferredParty(for item: PostItem, context: RowContext) -> FeedPart
 
 // MARK: - Helpers to extract name & avatar (NO ViewBuilder)
 private func displayName(for item: PostItem, context: RowContext) -> String {
+    if case .received = context {
+        return "Anonymous"
+    }
     let party = preferredParty(for: item, context: context)
     if let n = party.name?.trimmingCharacters(in: .whitespacesAndNewlines), !n.isEmpty {
         return n
@@ -242,6 +265,13 @@ private struct PostCardRow: View {
     let onReportTapped: () -> Void
     let onBlockTapped: () -> Void
 
+    private var showsAvatar: Bool {
+        if case .received = context {
+            return false
+        }
+        return true
+    }
+
     // ✅ avatar uses profile_url string
     @ViewBuilder
     private func avatarView(urlString: String?, seed: String?) -> some View {
@@ -259,7 +289,7 @@ private struct PostCardRow: View {
     private func overflowMenu() -> some View {
         Menu {
             switch context {
-            case .posted(let isFuture, _):
+            case .posted(let isFuture, _, _):
                 if isFuture {
                     Button { onAbortTapped() } label: {
                         Label("Abort (cancel schedule)", systemImage: "xmark.circle")
@@ -278,16 +308,20 @@ private struct PostCardRow: View {
             }
         } label: {
             Image(systemName: "ellipsis")
+                .font(.system(size: 18, weight: .semibold))
                 .foregroundColor(CriticPalette.onSurfaceMuted)
-                .padding(.horizontal, 4)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top, spacing: 12) {
-
-                avatarView(urlString: avatarURLString, seed: avatarSeed)      // <— profile_url is used here
+                if showsAvatar {
+                    avatarView(urlString: avatarURLString, seed: avatarSeed)
+                }
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text(title)
@@ -300,13 +334,20 @@ private struct PostCardRow: View {
                         .fixedSize(horizontal: false, vertical: true)
 
                     switch context {
-                    case .posted(_, let schedLabel):
-                        if let schedLabel {
-                            HStack(spacing: 6) {
+                    case .posted(let isFutureScheduled, let scheduledText, let secondaryText):
+                        if let scheduledText {
+                            HStack(alignment: .top, spacing: 6) {
                                 Image(systemName: "clock.fill").font(.caption2)
-                                Text(schedLabel).font(.critic(.caption))
+                                Text(scheduledText)
+                                    .font(.critic(.caption))
                             }
-                            .foregroundColor(.orange)
+                            .foregroundColor(isFutureScheduled ? .orange : CriticPalette.onSurfaceMuted)
+
+                            if let secondaryText {
+                                Text(secondaryText)
+                                    .font(.critic(.caption))
+                                    .foregroundColor(CriticPalette.onSurfaceMuted)
+                            }
                         } else if let created {
                             Text(created)
                                 .font(.critic(.caption))
@@ -450,8 +491,7 @@ struct ReviewFeedView: View {
             return nil
         }()
 
-        let sched = scheduleState(for: item)
-        let isFuture = (parseDate(item.ScheduledTime) ?? .distantPast) > Date()
+        let schedule = scheduleDisplay(for: item)
 
         PostCardRow(
             title: (context == .received ? "From: \(name)" : "To: \(name)"),
@@ -464,7 +504,11 @@ struct ReviewFeedView: View {
                 case .received:
                     return .received
                 case .posted:
-                    return .posted(isFutureScheduled: isFuture, scheduledLabel: sched?.label)
+                    return .posted(
+                        isFutureScheduled: schedule?.isFuture ?? false,
+                        scheduledText: schedule?.scheduledText,
+                        secondaryText: schedule?.secondaryText
+                    )
                 }
             }(),
             onAvatarTapped: {
@@ -559,8 +603,15 @@ struct ReviewFeedView: View {
                                         if activeTabValue == 0 {
                                             rowView(for: item, in: .received)
                                         } else {
-                                            let sched = scheduleState(for: item)
-                                            rowView(for: item, in: .posted(isFutureScheduled: (sched != nil), scheduledLabel: sched?.label))
+                                            let schedule = scheduleDisplay(for: item)
+                                            rowView(
+                                                for: item,
+                                                in: .posted(
+                                                    isFutureScheduled: schedule?.isFuture ?? false,
+                                                    scheduledText: schedule?.scheduledText,
+                                                    secondaryText: schedule?.secondaryText
+                                                )
+                                            )
                                         }
                                     }
                                     Spacer(minLength: 8)

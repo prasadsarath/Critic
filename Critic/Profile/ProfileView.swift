@@ -6,7 +6,6 @@
 
 import SwiftUI
 import UIKit
-import MessageUI
 import PhotosUI
 
 /// Pass `otherUser: nil` to show **your own** profile (Edit/Settings/Logout/Invite).
@@ -71,14 +70,12 @@ struct ProfileView: View {
 private struct SelfProfileContent: View {
     private enum ActiveSheet: Int, Identifiable {
         case invite
-        case deleteRequestComposer
 
         var id: Int { rawValue }
     }
 
     private enum ActiveAlert: Int, Identifiable {
         case logout
-        case deleteRequestFallback
 
         var id: Int { rawValue }
     }
@@ -258,8 +255,7 @@ private struct SelfProfileContent: View {
 
                 NavigationLink(
                     destination: SettingsView(
-                        onLogout: { activeAlert = .logout },
-                        onRequestAccountDeletion: { presentAccountDeletionRequest() }
+                        onDeleteAccountConfirmed: { performDeletedAccountExit() }
                     )
                         .navigationBarBackButtonHidden(false),
                     isActive: $pushSettings
@@ -280,12 +276,6 @@ private struct SelfProfileContent: View {
             switch sheet {
             case .invite:
                 InviteFriendsSheet(inviteURL: inviteLink)
-            case .deleteRequestComposer:
-                MailComposeView(
-                    recipients: [AppExternalLinks.contactEmail],
-                    subject: "Critic Account Deletion Request",
-                    body: deletionRequestBody
-                )
             }
         }
         .alert(item: $activeAlert) { alert in
@@ -296,12 +286,6 @@ private struct SelfProfileContent: View {
                     message: Text("You will need to sign in again to access your account."),
                     primaryButton: .cancel(Text("Cancel")),
                     secondaryButton: .destructive(Text("Yes"), action: performLogout)
-                )
-            case .deleteRequestFallback:
-                return Alert(
-                    title: Text("Mail isn’t available"),
-                    message: Text("Use \(AppExternalLinks.contactEmail) to request account deletion."),
-                    dismissButton: .cancel(Text("OK"))
                 )
             }
         }
@@ -358,54 +342,24 @@ private struct SelfProfileContent: View {
         userName = newName
     }
 
-    private var deletionRequestBody: String {
-        let resolvedEmail = meVM.identity?.email ?? email
-        let resolvedUserId = meVM.identity?.sub ?? UserDefaults.standard.string(forKey: "userId") ?? "Unknown"
-        return """
-        Hello Critic support,
-
-        I want to request deletion of my Critic account.
-
-        Account email: \(resolvedEmail)
-        Account user ID: \(resolvedUserId)
-
-        Please confirm when the deletion request has been processed.
-        """
-    }
-
-    private func presentAccountDeletionRequest() {
-        if MFMailComposeViewController.canSendMail() {
-            activeSheet = .deleteRequestComposer
-            return
-        }
-
-        guard let encodedSubject = "Critic Account Deletion Request".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-              let encodedBody = deletionRequestBody.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-              let fallbackURL = URL(string: "mailto:\(AppExternalLinks.contactEmail)?subject=\(encodedSubject)&body=\(encodedBody)") else {
-            activeAlert = .deleteRequestFallback
-            return
-        }
-
-        if UIApplication.shared.canOpenURL(fallbackURL) {
-            UIApplication.shared.open(fallbackURL)
-        } else {
-            activeAlert = .deleteRequestFallback
-        }
-    }
-
     private func performLogout() {
-        OIDCAuthManager.shared.signOut()
-        UserDefaults.standard.set(false, forKey: "isLoggedIn")
-        UserDefaults.standard.set(false, forKey: "hasCompletedOnboarding")
-        UserDefaults.standard.set(true, forKey: "justLoggedOut")
-        UserDefaults.standard.removeObject(forKey: "userName")
-        UserDefaults.standard.removeObject(forKey: "userEmail")
-        UserDefaults.standard.removeObject(forKey: "userProfileUrl")
-        userProfileUrl = ""
+        resetLocalSessionState()
+        OIDCAuthManager.shared.signOut(kind: .standardLogout)
+    }
+
+    private func performDeletedAccountExit() {
+        resetLocalSessionState()
+        OIDCAuthManager.shared.completeLocalLogout(kind: .accountDeletion)
+    }
+
+    private func resetLocalSessionState() {
         profileImage = Image(systemName: "person.circle.fill")
         hasCustomProfileImage = false
+        bio = ""
+        userProfileUrl = ""
         NavigationManager.shared.showInbox = false
         NavigationManager.shared.showWritePost = false
+        NavigationManager.shared.showProfile = false
     }
 
     private func normalizedName(_ value: String?) -> String? {
@@ -1278,8 +1232,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage("notifications_enabled") private var notificationsEnabled = true
 
-    var onLogout: () -> Void
-    var onRequestAccountDeletion: () -> Void
+    var onDeleteAccountConfirmed: () -> Void
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -1355,32 +1308,16 @@ struct SettingsView: View {
                 }
 
                 CriticSettingsSection(title: "Account") {
-                    Button {
-                        onLogout()
-                    } label: {
-                        CriticSettingsRowLabel(
-                            icon: "rectangle.portrait.and.arrow.right.fill",
-                            title: "Log Out",
-                            subtitle: "Sign out and return to login",
-                            iconColor: CriticPalette.error,
-                            titleColor: CriticPalette.error,
-                            showsChevron: false
-                        )
-                    }
-                    .buttonStyle(.plain)
-
-                    Divider().padding(.leading, 80)
-
-                    Button {
-                        onRequestAccountDeletion()
+                    NavigationLink {
+                        DeleteAccountView(onAccountDeleted: onDeleteAccountConfirmed)
                     } label: {
                         CriticSettingsRowLabel(
                             icon: "trash.fill",
-                            title: "Request Account Deletion",
-                            subtitle: "Ask support to remove your account",
+                            title: "Delete Account",
+                            subtitle: "Permanently delete your account",
                             iconColor: CriticPalette.error,
                             titleColor: CriticPalette.error,
-                            showsChevron: false
+                            showsChevron: true
                         )
                     }
                     .buttonStyle(.plain)
@@ -1394,6 +1331,226 @@ struct SettingsView: View {
         .navigationBarBackButtonHidden(true)
         .navigationBarHidden(true)
         .environment(\.colorScheme, .light)
+    }
+}
+
+struct DeleteAccountView: View {
+    private enum ActiveResultAlert: Identifiable {
+        case error(String)
+        case pending(String)
+
+        var id: String {
+            switch self {
+            case .error(let message):
+                return "error:\(message)"
+            case .pending(let message):
+                return "pending:\(message)"
+            }
+        }
+    }
+
+    @Environment(\.dismiss) private var dismiss
+
+    let onAccountDeleted: () -> Void
+
+    @State private var isDeleting = false
+    @State private var showDeleteConfirmation = false
+    @State private var activeResultAlert: ActiveResultAlert?
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 22) {
+                CriticDetailHeader(title: "Delete Account") {
+                    dismiss()
+                }
+
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("This permanently deletes your Critic account and associated app data.")
+                        .font(.critic(.display))
+                        .foregroundColor(CriticPalette.onSurface)
+
+                    Text("Information we are legally required to keep may be retained for compliance, fraud prevention, or dispute handling. We do not offer a retain or deactivate option instead of deletion.")
+                        .font(.critic(.body))
+                        .foregroundColor(CriticPalette.onSurfaceMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(20)
+                .criticCard(fill: CriticPalette.surface)
+
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("What happens next")
+                        .font(.critic(.pageTitle))
+                        .foregroundColor(CriticPalette.onSurface)
+
+                    deletionBullet("Your account is permanently deleted. We do not keep a user-facing retain or deactivate state.")
+                    deletionBullet("Your sign-in access is blocked so you can’t log back in with the deleted account.")
+                    deletionBullet("Your Critic profile and associated app data are deleted, except where retention is legally required.")
+                    deletionBullet("If backend processing takes additional time, the app will tell you before signing you out.")
+                }
+                .padding(20)
+                .criticCard()
+
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("This action can’t be undone.")
+                        .font(.critic(.bodyStrong))
+                        .foregroundColor(CriticPalette.error)
+
+                    Button {
+                        showDeleteConfirmation = true
+                    } label: {
+                        Group {
+                            if isDeleting {
+                                ProgressView()
+                                    .progressViewStyle(.circular)
+                                    .tint(.white)
+                                    .frame(maxWidth: .infinity)
+                            } else {
+                                Text("Delete account")
+                                    .frame(maxWidth: .infinity)
+                            }
+                        }
+                    }
+                    .buttonStyle(CriticFilledButtonStyle(backgroundColor: CriticPalette.error))
+                    .disabled(isDeleting)
+                }
+                .padding(20)
+                .criticCard(fill: CriticPalette.surfaceVariant)
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 28)
+        }
+        .background(CriticPalette.background.ignoresSafeArea())
+        .navigationBarBackButtonHidden(true)
+        .navigationBarHidden(true)
+        .environment(\.colorScheme, .light)
+        .confirmationDialog("Delete this account?", isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) {
+                Task { await deleteAccount() }
+            }
+        } message: {
+            Text("This permanently deletes your account and associated app data, except information we are legally required to retain.")
+        }
+        .alert(item: $activeResultAlert) { alert in
+            switch alert {
+            case .error(let message):
+                return Alert(
+                    title: Text("Couldn't Delete Account"),
+                    message: Text(message),
+                    dismissButton: .cancel(Text("OK"))
+                )
+            case .pending(let message):
+                return Alert(
+                    title: Text("Account Deletion Requested"),
+                    message: Text(message),
+                    dismissButton: .default(Text("OK"), action: onAccountDeleted)
+                )
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func deletionBullet(_ text: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "circle.fill")
+                .font(.system(size: 7, weight: .semibold))
+                .foregroundColor(CriticPalette.error)
+                .padding(.top, 6)
+
+            Text(text)
+                .font(.critic(.body))
+                .foregroundColor(CriticPalette.onSurfaceMuted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    @MainActor
+    private func deleteAccount() async {
+        guard !isDeleting else { return }
+        isDeleting = true
+        defer { isDeleting = false }
+
+        do {
+            let response = try await UsersProfileService.deleteCurrentUser()
+            let status = response.normalizedStatus
+            let message = response.normalizedMessage
+
+            if response.ok == false || isDeleteFailureStatus(status) {
+                activeResultAlert = .error(
+                    message ?? "The server couldn't delete your account right now."
+                )
+                return
+            }
+
+            if isDeletePendingStatus(status) {
+                let pendingText = message
+                    ?? "Your deletion request was accepted and will finish shortly."
+                activeResultAlert = .pending(pendingText)
+                return
+            }
+
+            onAccountDeleted()
+        } catch {
+            activeResultAlert = .error(accountDeletionErrorText(from: error))
+        }
+    }
+
+    private func accountDeletionErrorText(from error: Error) -> String {
+        if let apiError = error as? APIError {
+            switch apiError {
+            case .statusCode(_, let data):
+                if let serverMessage = accountDeletionServerMessage(from: data) {
+                    return serverMessage
+                }
+                return "The server couldn't delete your account right now."
+            default:
+                break
+            }
+        }
+        return error.localizedDescription
+    }
+
+    private func isDeletePendingStatus(_ status: String?) -> Bool {
+        guard let status else { return false }
+        switch status {
+        case "accepted", "in_progress", "pending", "processing", "queued", "scheduled":
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func isDeleteFailureStatus(_ status: String?) -> Bool {
+        guard let status else { return false }
+        switch status {
+        case "denied", "error", "failed", "failure", "rejected":
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func accountDeletionServerMessage(from data: Data?) -> String? {
+        guard let data else { return nil }
+        if let decoded = try? JSONDecoder().decode(AccountDeletionResponse.self, from: data),
+           let message = decoded.normalizedMessage {
+            return message
+        }
+        if let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let message = object["message"] as? String {
+            let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty {
+                return trimmed
+            }
+        }
+        if let text = String(data: data, encoding: .utf8) {
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty {
+                return trimmed
+            }
+        }
+        return nil
     }
 }
 
@@ -1824,44 +1981,6 @@ struct ShareSheet: UIViewControllerRepresentable {
               let root = scene.windows.first?.rootViewController else { return }
         let vc = UIActivityViewController(activityItems: items, applicationActivities: nil)
         root.present(vc, animated: true)
-    }
-}
-
-struct MailComposeView: UIViewControllerRepresentable {
-    let recipients: [String]
-    let subject: String
-    let body: String
-    @Environment(\.dismiss) private var dismiss
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(dismiss: dismiss)
-    }
-
-    func makeUIViewController(context: Context) -> MFMailComposeViewController {
-        let controller = MFMailComposeViewController()
-        controller.mailComposeDelegate = context.coordinator
-        controller.setToRecipients(recipients)
-        controller.setSubject(subject)
-        controller.setMessageBody(body, isHTML: false)
-        return controller
-    }
-
-    func updateUIViewController(_ uiViewController: MFMailComposeViewController, context: Context) {}
-
-    final class Coordinator: NSObject, MFMailComposeViewControllerDelegate {
-        private let dismiss: DismissAction
-
-        init(dismiss: DismissAction) {
-            self.dismiss = dismiss
-        }
-
-        func mailComposeController(
-            _ controller: MFMailComposeViewController,
-            didFinishWith result: MFMailComposeResult,
-            error: Error?
-        ) {
-            dismiss()
-        }
     }
 }
 

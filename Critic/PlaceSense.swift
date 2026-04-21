@@ -89,7 +89,7 @@ final class PlaceClassifier {
 
         // 2) Natural-language “office” / “apartment” near the user (600m box)
         let region = MKCoordinateRegion(center: coordinate, latitudinalMeters: 600, longitudinalMeters: 600)
-        func find(_ q: String) async -> [MKMapItem] {
+        @Sendable func find(_ q: String) async -> [MKMapItem] {
             let r = MKLocalSearch.Request()
             r.naturalLanguageQuery = q
             r.region = region

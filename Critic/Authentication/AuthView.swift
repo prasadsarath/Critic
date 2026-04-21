@@ -598,7 +598,7 @@ private extension HomeTab {
             )
         case .posts:
             return .init(
-                title: "Posts",
+                title: "Critics",
                 symbol: "bubble.left.and.bubble.right",
                 selectedSymbol: "bubble.left.and.bubble.right.fill",
                 accent: UIColor(Color(hex: 0xF97316))
@@ -623,11 +623,6 @@ private extension HomeTab {
 
 private struct GlossyDockBar: View {
     @Binding var selectedTab: HomeTab
-    let postsBadgeCount: Int
-
-    private func badgeCount(for tab: HomeTab) -> Int {
-        tab == .posts ? postsBadgeCount : 0
-    }
 
     var body: some View {
         HStack(spacing: 6) {
@@ -642,22 +637,10 @@ private struct GlossyDockBar: View {
                     }
                 } label: {
                     VStack(spacing: 4) {
-                        ZStack(alignment: .topTrailing) {
-                            Image(systemName: isSelected ? presentation.selectedSymbol : presentation.symbol)
-                                .font(.system(size: isSelected ? 17 : 16, weight: isSelected ? .semibold : .medium))
-                                .foregroundColor(accent.opacity(isSelected ? 1 : 0.75))
-                                .frame(height: 18)
-
-                            if badgeCount(for: tab) > 0 {
-                                Text("\(badgeCount(for: tab))")
-                                    .font(.system(size: 10, weight: .bold))
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 5)
-                                    .frame(minWidth: 18, minHeight: 18)
-                                    .background(Capsule(style: .continuous).fill(CriticPalette.error))
-                                    .offset(x: 10, y: -7)
-                            }
-                        }
+                        Image(systemName: isSelected ? presentation.selectedSymbol : presentation.symbol)
+                            .font(.system(size: isSelected ? 17 : 16, weight: isSelected ? .semibold : .medium))
+                            .foregroundColor(accent.opacity(isSelected ? 1 : 0.75))
+                            .frame(height: 18)
 
                         Text(presentation.title)
                             .font(isSelected ? .custom("Manrope-Bold", size: 10.5) : .custom("Manrope-Medium", size: 10.5))
@@ -1188,6 +1171,10 @@ struct HomeView: View {
         .background(Theme.background)
     }
 
+    private var shouldHideRootNavigationBar: Bool {
+        true
+    }
+
     var body: some View {
         NavigationView {
             ZStack {
@@ -1231,12 +1218,11 @@ struct HomeView: View {
 
                         ReviewFeedView(tabSelection: $postsFeedTab, showNavigationTitle: false, showsTabBar: false)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .background(CriticPalette.background)
-                            .tag(HomeTab.posts)
-                            .tabItem {
-                                tabLabel(for: .posts)
-                            }
-                            .badge(inboxVM.count == 0 ? nil : String(inboxVM.count))
+                        .background(CriticPalette.background)
+                        .tag(HomeTab.posts)
+                        .tabItem {
+                            tabLabel(for: .posts)
+                        }
 
                         TaggedUsersView(
                             tagged: tagVM.tagged,
@@ -1259,7 +1245,10 @@ struct HomeView: View {
                             await tagVM.refresh(for: uid)
                         }
 
-                        ContactsView(vm: contactsVM) { userId, displayName in
+                        ContactsView(
+                            vm: contactsVM,
+                            onClose: { selectedTab = .home }
+                        ) { userId, displayName in
                             KnownUserDirectory.remember(userId: userId, displayName: displayName, email: nil, phone: nil, profileUrl: nil)
                             let u = UserLocation(
                                 id: userId,
@@ -1284,7 +1273,7 @@ struct HomeView: View {
                     }
                     .safeAreaInset(edge: .bottom, spacing: 0) {
                         if !navigationManager.showProfile && !navigationManager.showWritePost {
-                            GlossyDockBar(selectedTab: $selectedTab, postsBadgeCount: inboxVM.count)
+                            GlossyDockBar(selectedTab: $selectedTab)
                         }
                     }
                 }
@@ -1302,7 +1291,7 @@ struct HomeView: View {
                     isActive: $navigationManager.showWritePost
                 ) { EmptyView() }
             }
-                .navigationBarHidden(true)
+                .navigationBarHidden(shouldHideRootNavigationBar)
                 .task {
                     guard !isRunningPreview else { return }
                     await meVM.loadIfNeeded()

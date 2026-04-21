@@ -46,6 +46,40 @@ private struct UsersUpdateEnvelope: Decodable {
     let user: UsersTableProfile?
 }
 
+struct AccountDeletionResponse: Decodable, Equatable {
+    let ok: Bool?
+    let status: String?
+    let message: String?
+    let userId: String?
+    let deletedAt: String?
+    let disabledInCognito: Bool?
+    let removedUserRecord: Bool?
+    let deletedPostCount: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case ok
+        case status
+        case message
+        case userId
+        case deletedAt
+        case disabledInCognito = "disabledInCognito"
+        case removedUserRecord = "removedUserRecord"
+        case deletedPostCount = "deletedPostCount"
+    }
+
+    var normalizedStatus: String? {
+        let trimmed = status?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard let trimmed, !trimmed.isEmpty else { return nil }
+        return trimmed
+    }
+
+    var normalizedMessage: String? {
+        let trimmed = message?.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let trimmed, !trimmed.isEmpty else { return nil }
+        return trimmed
+    }
+}
+
 private struct AvatarUploadEnvelope: Decodable {
     let ok: Bool?
     let uploadUrl: String?
@@ -259,6 +293,35 @@ enum UsersProfileService {
             fileURL: fileURL,
             contentType: normalized(envelope.contentType) ?? contentType
         )
+    }
+
+    static func deleteCurrentUser(reason: String = "user_initiated_ios") async throws -> AccountDeletionResponse {
+        let request = APIRequestDescriptor(
+            url: AppEndpoints.Gateway.usersDelete,
+            method: .POST,
+            body: try APIRequestDescriptor.jsonBody([
+                "reason": reason,
+                "source": "ios_settings_delete_account"
+            ]),
+            authorization: .currentUser
+        )
+
+        print("[UsersProfileService] request: POST \(AppEndpoints.Gateway.usersDelete.absoluteString)")
+        let (data, response) = try await APIRequestExecutor.shared.perform(request)
+        let bodyText = String(data: data, encoding: .utf8) ?? "<non-utf8 body>"
+        print("[UsersProfileService] users_delete status=\(response.statusCode)")
+        print("[UsersProfileService] users_delete body=\(bodyText)")
+
+        guard (200...299).contains(response.statusCode) else {
+            throw APIError.statusCode(response.statusCode, data)
+        }
+
+        let decoded = try JSONDecoder().decode(AccountDeletionResponse.self, from: data)
+        print(
+            "[UsersProfileService] users_delete decoded ok=\(decoded.ok.map(String.init) ?? "nil") " +
+            "status=\(decoded.normalizedStatus ?? "nil") userId=\(decoded.userId ?? "nil")"
+        )
+        return decoded
     }
 
     static func uploadAvatarData(

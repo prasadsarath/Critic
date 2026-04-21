@@ -13,6 +13,8 @@
 			</array>
 		</dict>
 	</array>
+	<key>CriticUsersDeleteURL</key>
+	<string>https://cbr65l4urp5fwypb7pwpac2fg40rdlau.lambda-url.us-east-1.on.aws/</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>whatsapp</string>

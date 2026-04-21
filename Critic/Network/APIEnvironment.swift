@@ -29,6 +29,10 @@ enum AppEndpoints {
         static let usersMe = baseURL.appendingPathComponent("critic_users_me")
         static let usersGet = baseURL.appendingPathComponent("critic_users_get")
         static let usersUpdate = baseURL.appendingPathComponent("critic_users_update")
+        static let usersDelete = AppEndpoints.configuredURL(
+            forInfoPlistKey: "CriticUsersDeleteURL",
+            fallback: baseURL.appendingPathComponent("critic_users_delete")
+        )
         static let profileAvatarUploadURL = baseURL.appendingPathComponent("critic_profile_avatar_upload_url")
         static let feedbackSubmit = AppEndpoints.configuredURL(
             forInfoPlistKey: "CriticFeedbackSubmitURL",
