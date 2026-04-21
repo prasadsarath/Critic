@@ -127,7 +127,7 @@ final class OIDCAuthManager: NSObject, ObservableObject {
         isStartingAuthorization = false
     }
 
-    // MARK: - Sign In (Hosted UI - shows Cognito form + Google button)
+    // MARK: - Sign In (Hosted UI)
     func signIn(presentingViewController: UIViewController) {
         guard !isSigningIn else { return }
         isStartingAuthorization = true
@@ -155,45 +155,6 @@ final class OIDCAuthManager: NSObject, ObservableObject {
                 prefersEphemeral: prefersEphemeral,
                 extraParams: extraParams,
                 includePhoneScope: true,
-                includeAdminScope: self.requestsAdminScopeAtLogin
-            )
-            if forceFreshLogin {
-                UserDefaults.standard.set(false, forKey: "justLoggedOut")
-            }
-        }
-    }
-
-    // MARK: - Optional: Google-only fast path (use ONLY if Google IdP exists)
-    func signInWithGoogle(presentingViewController: UIViewController) {
-        guard !isSigningIn else { return }
-        isStartingAuthorization = true
-
-        let forceFreshLogin = UserDefaults.standard.bool(forKey: "justLoggedOut")
-        print("[Auth] signInWithGoogle invoked. forceFreshLogin=\(forceFreshLogin)")
-
-        OIDAuthorizationService.discoverConfiguration(forIssuer: issuer) { configuration, error in
-            guard let configuration else {
-                self.isStartingAuthorization = false
-                print("‼️ Discovery error: \(error?.localizedDescription ?? "unknown")")
-                NotificationCenter.default.post(name: .loginFailed, object: error)
-                return
-            }
-
-            var extraParams: [String: String] = [
-                "identity_provider": "Google",
-                "prompt": "select_account"
-            ]
-            if forceFreshLogin {
-                extraParams["max_age"] = "0"
-            }
-
-            let prefersEphemeral = forceFreshLogin
-            self.beginAuthorization(
-                configuration: configuration,
-                presentingViewController: presentingViewController,
-                prefersEphemeral: prefersEphemeral,
-                extraParams: extraParams,
-                includePhoneScope: false,
                 includeAdminScope: self.requestsAdminScopeAtLogin
             )
             if forceFreshLogin {
