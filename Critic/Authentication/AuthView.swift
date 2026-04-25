@@ -623,6 +623,11 @@ private extension HomeTab {
 
 private struct GlossyDockBar: View {
     @Binding var selectedTab: HomeTab
+    let postsUnreadCount: Int
+
+    private var unreadBadgeText: String {
+        postsUnreadCount > 99 ? "99+" : "\(postsUnreadCount)"
+    }
 
     var body: some View {
         HStack(spacing: 6) {
@@ -636,18 +641,38 @@ private struct GlossyDockBar: View {
                         selectedTab = tab
                     }
                 } label: {
-                    VStack(spacing: 4) {
-                        Image(systemName: isSelected ? presentation.selectedSymbol : presentation.symbol)
-                            .font(.system(size: isSelected ? 17 : 16, weight: isSelected ? .semibold : .medium))
-                            .foregroundColor(accent.opacity(isSelected ? 1 : 0.75))
-                            .frame(height: 18)
+                    ZStack(alignment: .topTrailing) {
+                        VStack(spacing: 4) {
+                            Image(systemName: isSelected ? presentation.selectedSymbol : presentation.symbol)
+                                .font(.system(size: isSelected ? 17 : 16, weight: isSelected ? .semibold : .medium))
+                                .foregroundColor(accent.opacity(isSelected ? 1 : 0.75))
+                                .frame(height: 18)
 
-                        Text(presentation.title)
-                            .font(isSelected ? .custom("Manrope-Bold", size: 10.5) : .custom("Manrope-Medium", size: 10.5))
-                            .foregroundColor(isSelected ? CriticPalette.onSurface : CriticPalette.onSurfaceMuted)
-                            .lineLimit(1)
+                            Text(presentation.title)
+                                .font(isSelected ? .custom("Manrope-Bold", size: 10.5) : .custom("Manrope-Medium", size: 10.5))
+                                .foregroundColor(isSelected ? CriticPalette.onSurface : CriticPalette.onSurfaceMuted)
+                                .lineLimit(1)
+                        }
+                        .frame(maxWidth: .infinity)
+
+                        if tab == .posts, postsUnreadCount > 0 {
+                            Text(unreadBadgeText)
+                                .font(.custom("Manrope-Bold", size: 9.5))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, postsUnreadCount > 9 ? 5 : 0)
+                                .frame(minWidth: 18, minHeight: 18)
+                                .background(
+                                    Capsule(style: .continuous)
+                                        .fill(CriticPalette.error)
+                                )
+                                .overlay(
+                                    Capsule(style: .continuous)
+                                        .stroke(CriticPalette.surface, lineWidth: 2)
+                                )
+                                .offset(x: 12, y: -6)
+                                .accessibilityLabel("\(postsUnreadCount) unread critics")
+                        }
                     }
-                    .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
                     .padding(.horizontal, 4)
                     .background(
@@ -1175,6 +1200,77 @@ struct HomeView: View {
         true
     }
 
+    @ViewBuilder
+    private var selectedTabContent: some View {
+        switch selectedTab {
+        case .home:
+            RelativeUserMap(
+                centerUser: centerUser,
+                otherUsers: activeUsers,
+                onWrite: { user in attemptWrite(user: user) },
+                onOpenProfile: { user in openProfile(for: user) },
+                selectedUser: $selectedUser,
+                selectedDistance: $selectedDistance
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Theme.background)
+
+        case .list:
+            UsersListView(
+                centerUser: centerUser,
+                allUsers: activeUsers,
+                onWrite: { user in attemptWrite(user: user) },
+                onTagToggle: { user in handleTagToggle(for: user) },
+                isTagged: { user in tagVM.isTagged(user.id) },
+                onOpenProfile: { user in openProfile(for: user) }
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Theme.background)
+
+        case .posts:
+            ReviewFeedView(tabSelection: $postsFeedTab, showNavigationTitle: false, showsTabBar: false)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(CriticPalette.background)
+
+        case .tagged:
+            TaggedUsersView(
+                tagged: tagVM.tagged,
+                allUsers: allUsers,
+                onWrite: { attemptWrite(user: $0) },
+                onUntag: { user in handleTagToggle(for: user) },
+                onOpenProfile: { user in openProfile(for: user) }
+            )
+            .background(Theme.background)
+            .refreshable {
+                guard let uid = currentUserId() else { return }
+                await tagVM.refresh(for: uid)
+            }
+
+        case .contacts:
+            ContactsView(
+                vm: contactsVM,
+                onClose: { selectedTab = .home }
+            ) { userId, displayName in
+                KnownUserDirectory.remember(userId: userId, displayName: displayName, email: nil, phone: nil, profileUrl: nil)
+                let u = UserLocation(
+                    id: userId,
+                    latitude: centerUser.latitude,
+                    longitude: centerUser.longitude,
+                    profileImageName: "person.circle.fill",
+                    displayName: DisplayNameResolver.resolve(
+                        displayName: displayName ?? KnownUserDirectory.name(for: userId),
+                        email: KnownUserDirectory.email(for: userId),
+                        phone: KnownUserDirectory.phone(for: userId),
+                        userId: userId
+                    ),
+                    profileUrl: nil
+                )
+                attemptWrite(user: u)
+            }
+            .background(Theme.background)
+        }
+    }
+
     var body: some View {
         NavigationView {
             ZStack {
@@ -1185,95 +1281,10 @@ struct HomeView: View {
                         topBar
                     }
 
-                    TabView(selection: $selectedTab) {
-                        RelativeUserMap(
-                            centerUser: centerUser,
-                            otherUsers: activeUsers,
-                            onWrite: { user in attemptWrite(user: user) },
-                            onOpenProfile: { user in openProfile(for: user) },
-                            selectedUser: $selectedUser,
-                            selectedDistance: $selectedDistance
-                        )
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(Theme.background)
-                        .tag(HomeTab.home)
-                        .tabItem {
-                            tabLabel(for: .home)
-                        }
-
-                        UsersListView(
-                            centerUser: centerUser,
-                            allUsers: activeUsers,
-                            onWrite: { user in attemptWrite(user: user) },
-                            onTagToggle: { user in handleTagToggle(for: user) },
-                            isTagged: { user in tagVM.isTagged(user.id) },
-                            onOpenProfile: { user in openProfile(for: user) }
-                        )
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(Theme.background)
-                        .tag(HomeTab.list)
-                        .tabItem {
-                            tabLabel(for: .list)
-                        }
-
-                        ReviewFeedView(tabSelection: $postsFeedTab, showNavigationTitle: false, showsTabBar: false)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(CriticPalette.background)
-                        .tag(HomeTab.posts)
-                        .tabItem {
-                            tabLabel(for: .posts)
-                        }
-
-                        TaggedUsersView(
-                            tagged: tagVM.tagged,
-                            allUsers: allUsers,
-                            onWrite: { attemptWrite(user: $0) },
-                            onUntag: { user in handleTagToggle(for: user) },
-                            onOpenProfile: { user in openProfile(for: user) }
-                        )
-                        .background(Theme.background)
-                        .tag(HomeTab.tagged)
-                        .tabItem {
-                            tabLabel(for: .tagged)
-                        }
-                        .onAppear {
-                            guard let uid = currentUserId() else { return }
-                            Task { await tagVM.refresh(for: uid) }
-                        }
-                        .refreshable {
-                            guard let uid = currentUserId() else { return }
-                            await tagVM.refresh(for: uid)
-                        }
-
-                        ContactsView(
-                            vm: contactsVM,
-                            onClose: { selectedTab = .home }
-                        ) { userId, displayName in
-                            KnownUserDirectory.remember(userId: userId, displayName: displayName, email: nil, phone: nil, profileUrl: nil)
-                            let u = UserLocation(
-                                id: userId,
-                                latitude: centerUser.latitude,
-                                longitude: centerUser.longitude,
-                                profileImageName: "person.circle.fill",
-                                displayName: DisplayNameResolver.resolve(
-                                    displayName: displayName ?? KnownUserDirectory.name(for: userId),
-                                    email: KnownUserDirectory.email(for: userId),
-                                    phone: KnownUserDirectory.phone(for: userId),
-                                    userId: userId
-                                ),
-                                profileUrl: nil
-                            )
-                            attemptWrite(user: u)
-                        }
-                        .background(Theme.background)
-                        .tag(HomeTab.contacts)
-                        .tabItem {
-                            tabLabel(for: .contacts)
-                        }
-                    }
+                    selectedTabContent
                     .safeAreaInset(edge: .bottom, spacing: 0) {
                         if !navigationManager.showProfile && !navigationManager.showWritePost {
-                            GlossyDockBar(selectedTab: $selectedTab)
+                            GlossyDockBar(selectedTab: $selectedTab, postsUnreadCount: inboxVM.count)
                         }
                     }
                 }
@@ -1439,12 +1450,16 @@ struct HomeView: View {
                     storedUserName = latest
                 }
                 OIDCAuthManager.shared.printUserSnapshot(tag: "didLogin")
+                if let uid = currentUserId() {
+                    inboxVM.start(userId: uid, every: 15)
+                }
                 disconnectSocket(reason: "re-login")
                 connectSocketIfReady()
                 pushAndFetchNearby(force: true, reason: "didLogin")
             }
 
             .onReceive(NotificationCenter.default.publisher(for: .didLogout)) { _ in
+                inboxVM.stop()
                 disconnectSocket(reason: "logout")
             }
 

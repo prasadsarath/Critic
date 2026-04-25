@@ -162,6 +162,7 @@ struct WriteReviewView: View {
 // MARK: - Cross-screen signal to jump to Posted tab
 extension Notification.Name {
     static let jumpToPosted = Notification.Name("jumpToPosted")
+    static let reviewFeedNeedsRefresh = Notification.Name("reviewFeedNeedsRefresh")
 }
 
 // MARK: - Schedule Sheet (bottom sheet)

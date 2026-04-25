@@ -424,8 +424,12 @@ struct ReviewFeedView: View {
     let showsTabBar: Bool
     private let tabSelection: Binding<Int>?
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var vm = ReviewFeedViewModel()
     @State private var selectedTab: Int // 0=Received, 1=Posted
+    @State private var isVisible = false
+
+    private let refreshTicker = Timer.publish(every: 15, on: .main, in: .common).autoconnect()
 
     // Delete / Abort
     @State private var showDelete = false
@@ -475,6 +479,26 @@ struct ReviewFeedView: View {
         self.showsTabBar = showsTabBar
         self.tabSelection = tabSelection
         _selectedTab = State(initialValue: tabSelection?.wrappedValue ?? initialTab)
+    }
+
+    private func refreshFeed(showSpinner: Bool? = nil) {
+        guard ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" else { return }
+        Task {
+            await vm.load(showSpinner: showSpinner ?? !vm.hasLoadedOnce)
+        }
+    }
+
+    private func markVisibleReceivedPostsAsRead() {
+        guard isVisible, activeTabValue == 0 else { return }
+        let userId = UserDefaults.standard.string(forKey: "userId")?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !userId.isEmpty else { return }
+        let postIds = vm.receivedPosts.map(\.postId)
+        guard !postIds.isEmpty else { return }
+        ReceivedPostsReadStore.markSeen(postIds: postIds, for: userId)
+    }
+
+    private func syncReceivedVisibilityState() {
+        ReceivedPostsVisibilityState.isViewingReceivedTab = isVisible && activeTabValue == 0
     }
 
     // MARK: - small row builder
@@ -630,23 +654,45 @@ struct ReviewFeedView: View {
             .navigationBarBackButtonHidden(true)
             .navigationBarHidden(true)
             .onAppear {
+                isVisible = true
                 if UserDefaults.standard.string(forKey: "inboxStartTab") == "posted" {
                     activeTab.wrappedValue = 1
                     UserDefaults.standard.removeObject(forKey: "inboxStartTab")
                 }
-                if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1",
-                   !vm.isLoading,
-                   !vm.hasLoadedOnce {
-                    Task { await vm.load() }
-                }
+                syncReceivedVisibilityState()
+                refreshFeed()
+                markVisibleReceivedPostsAsRead()
+            }
+            .onDisappear {
+                isVisible = false
+                syncReceivedVisibilityState()
             }
             .onChange(of: activeTabValue) { newValue in
+                syncReceivedVisibilityState()
                 if newValue == 1, let first = vm.myPosts.first {
                     withAnimation { proxy.scrollTo(first.id, anchor: .top) }
+                } else if newValue == 0 {
+                    markVisibleReceivedPostsAsRead()
                 }
+            }
+            .onChange(of: vm.receivedPosts) { _ in
+                markVisibleReceivedPostsAsRead()
+            }
+            .onChange(of: scenePhase) { phase in
+                guard isVisible, phase == .active else { return }
+                markVisibleReceivedPostsAsRead()
+                refreshFeed(showSpinner: false)
             }
             .onReceive(NotificationCenter.default.publisher(for: .jumpToPosted)) { _ in
                 activeTab.wrappedValue = 1
+                refreshFeed(showSpinner: false)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .reviewFeedNeedsRefresh)) { _ in
+                refreshFeed(showSpinner: false)
+            }
+            .onReceive(refreshTicker) { _ in
+                guard isVisible, scenePhase == .active else { return }
+                refreshFeed(showSpinner: false)
             }
             .background(
                 NavigationLink(

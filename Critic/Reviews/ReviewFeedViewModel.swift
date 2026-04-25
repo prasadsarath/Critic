@@ -112,6 +112,8 @@ final class ReviewFeedViewModel: ObservableObject {
     @Published var errorText: String?
     @Published var hasLoadedOnce = false
 
+    private var isFetching = false
+
     private let listURL = AppEndpoints.Gateway.posts
     private let deleteURL = AppEndpoints.Gateway.deletePost
     private let abortURL = AppEndpoints.Gateway.deletePost
@@ -119,16 +121,25 @@ final class ReviewFeedViewModel: ObservableObject {
 
     private let blockService = BlockService()
 
-    func load() async {
+    func load(showSpinner: Bool = true) async {
         if reviewFeedPreviewFlag { return }
+        if isFetching { return }
         guard let userId = currentReviewFeedUserId() else {
             handleMissingSession()
             return
         }
 
-        isLoading = true
-        errorText = nil
-        defer { isLoading = false }
+        isFetching = true
+        if showSpinner {
+            isLoading = true
+            errorText = nil
+        }
+        defer {
+            isFetching = false
+            if showSpinner {
+                isLoading = false
+            }
+        }
 
         do {
             let request = APIRequestDescriptor(
@@ -188,6 +199,7 @@ final class ReviewFeedViewModel: ObservableObject {
 
             myPosts = mySorted
             receivedPosts = recvSorted
+            errorText = nil
             hasLoadedOnce = true
             if reviewFeedDebugLoggingEnabled {
                 print("[ReviewFeed] decoded myPosts=\(mySorted.count) receivedPosts=\(recvSorted.count)")
@@ -210,9 +222,13 @@ final class ReviewFeedViewModel: ObservableObject {
                 handleMissingSession()
                 return
             }
-            errorText = error.localizedDescription
-            myPosts = []
-            receivedPosts = []
+            if showSpinner || !hasLoadedOnce {
+                errorText = error.localizedDescription
+                myPosts = []
+                receivedPosts = []
+            } else if reviewFeedDebugLoggingEnabled {
+                print("[ReviewFeed] background refresh failed: \(error.localizedDescription)")
+            }
         }
     }
 

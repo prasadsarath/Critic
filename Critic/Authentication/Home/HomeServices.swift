@@ -2,6 +2,68 @@ import Combine
 import CoreLocation
 import Foundation
 
+extension Notification.Name {
+    static let receivedPostsReadStateDidChange = Notification.Name("receivedPostsReadStateDidChange")
+}
+
+enum ReceivedPostsReadStore {
+    private static let storageKeyPrefix = "receivedSeenPostIds"
+
+    static func unreadCount(for postIds: [String], userId: String) -> Int {
+        guard let normalizedUserId = normalized(userId) else { return 0 }
+        let seen = seenPostIds(for: normalizedUserId)
+        return normalizedPostIds(postIds).reduce(into: 0) { partialResult, postId in
+            if !seen.contains(postId) {
+                partialResult += 1
+            }
+        }
+    }
+
+    static func markSeen(postIds: [String], for userId: String) {
+        guard let normalizedUserId = normalized(userId) else { return }
+        let incoming = Set(normalizedPostIds(postIds))
+        guard !incoming.isEmpty else { return }
+
+        var existing = seenPostIds(for: normalizedUserId)
+        let previousCount = existing.count
+        existing.formUnion(incoming)
+        guard existing.count != previousCount else { return }
+
+        UserDefaults.standard.set(Array(existing), forKey: storageKey(for: normalizedUserId))
+        NotificationCenter.default.post(
+            name: .receivedPostsReadStateDidChange,
+            object: nil,
+            userInfo: ["userId": normalizedUserId]
+        )
+    }
+
+    private static func seenPostIds(for userId: String) -> Set<String> {
+        let values = UserDefaults.standard.stringArray(forKey: storageKey(for: userId)) ?? []
+        return Set(normalizedPostIds(values))
+    }
+
+    private static func storageKey(for userId: String) -> String {
+        "\(storageKeyPrefix).\(userId)"
+    }
+
+    private static func normalized(_ value: String) -> String? {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private static func normalizedPostIds(_ postIds: [String]) -> [String] {
+        postIds.compactMap { postId in
+            let trimmed = postId.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : trimmed
+        }
+    }
+}
+
+@MainActor
+enum ReceivedPostsVisibilityState {
+    static var isViewingReceivedTab = false
+}
+
 @MainActor
 final class NavigationManager: ObservableObject {
     static let shared = NavigationManager()
@@ -397,6 +459,9 @@ final class InboxCountViewModel: ObservableObject {
 
     private let listURL = AppEndpoints.Gateway.posts
     private var ticker: AnyCancellable?
+    private var readStateObserver: NSObjectProtocol?
+    private var currentUserId: String?
+    private var lastReceivedPostIds: [String] = []
 
     private struct FeedResponse: Codable {
         let myPosts: [PostItem]
@@ -410,6 +475,8 @@ final class InboxCountViewModel: ObservableObject {
 
     func start(userId: String, every seconds: TimeInterval = 15) {
         stop()
+        currentUserId = userId
+        observeReadStateChanges(for: userId)
         Task { await fetch(userId: userId) }
         ticker = Timer.publish(every: seconds, on: .main, in: .common)
             .autoconnect()
@@ -421,6 +488,13 @@ final class InboxCountViewModel: ObservableObject {
     func stop() {
         ticker?.cancel()
         ticker = nil
+        if let readStateObserver {
+            NotificationCenter.default.removeObserver(readStateObserver)
+            self.readStateObserver = nil
+        }
+        currentUserId = nil
+        lastReceivedPostIds = []
+        count = 0
     }
 
     private func fetch(userId: String) async {
@@ -436,11 +510,38 @@ final class InboxCountViewModel: ObservableObject {
             )
             let (data, _) = try await APIRequestExecutor.shared.perform(request)
             let decoded = try JSONDecoder().decode(FeedResponse.self, from: data)
+            let postIds = decoded.receivedPosts.map(\.postId)
             await MainActor.run {
-                self.count = decoded.receivedPosts.count
+                guard self.currentUserId == userId else { return }
+                self.lastReceivedPostIds = postIds
+                if ReceivedPostsVisibilityState.isViewingReceivedTab {
+                    ReceivedPostsReadStore.markSeen(postIds: postIds, for: userId)
+                }
+                self.recomputeCount()
             }
         } catch {
             print("[InboxVM][ERROR] \(error.localizedDescription)")
         }
+    }
+
+    private func observeReadStateChanges(for userId: String) {
+        readStateObserver = NotificationCenter.default.addObserver(
+            forName: .receivedPostsReadStateDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] note in
+            guard let self else { return }
+            let changedUserId = (note.userInfo?["userId"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard changedUserId == userId else { return }
+            self.recomputeCount()
+        }
+    }
+
+    private func recomputeCount() {
+        guard let currentUserId else {
+            count = 0
+            return
+        }
+        count = ReceivedPostsReadStore.unreadCount(for: lastReceivedPostIds, userId: currentUserId)
     }
 }

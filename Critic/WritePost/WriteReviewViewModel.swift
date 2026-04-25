@@ -116,11 +116,11 @@ final class WriteReviewViewModel: ObservableObject {
     }
 
     var canPostNow: Bool {
-        reviewApproved && !isPosting
+        reviewApproved && !isPosting && resolvedTargetUserId != nil
     }
 
     var canSchedule: Bool {
-        reviewApproved && !isPosting
+        reviewApproved && !isPosting && resolvedTargetUserId != nil
     }
 
     var minSchedule: Date {
@@ -226,14 +226,16 @@ final class WriteReviewViewModel: ObservableObject {
             await showMessage("Please enter some text before posting.")
             return
         }
+        guard let recipientUserId = await requireTargetUserId() else { return }
 
         isPosting = true
         defer { isPosting = false }
 
         do {
-            var payload = PostPayload.make(content: text, receiverId: targetUserId, scheduledAt: nil)
+            var payload = PostPayload.make(content: text, receiverId: recipientUserId, scheduledAt: nil)
             payload.senderId = uid
             try await sendPost(payload: payload)
+            notifyReviewFeedRefresh()
             navigateToPostedFeed()
             reviewText = ""
             reviewApproved = false
@@ -260,14 +262,16 @@ final class WriteReviewViewModel: ObservableObject {
             await showMessage("Please enter some text before scheduling.")
             return
         }
+        guard let recipientUserId = await requireTargetUserId() else { return }
 
         isPosting = true
         defer { isPosting = false }
 
         do {
-            var payload = PostPayload.make(content: text, receiverId: targetUserId, scheduledAt: when)
+            var payload = PostPayload.make(content: text, receiverId: recipientUserId, scheduledAt: when)
             payload.senderId = uid
             try await sendPost(payload: payload)
+            notifyReviewFeedRefresh()
             navigateToPostedFeed()
             reviewText = ""
             reviewApproved = false
@@ -290,14 +294,19 @@ final class WriteReviewViewModel: ObservableObject {
             scheduledAt = nil
             return
         }
+        guard let recipientUserId = await requireTargetUserId() else {
+            scheduledAt = nil
+            return
+        }
 
         isPosting = true
         defer { isPosting = false }
 
         do {
-            var payload = PostPayload.make(content: text, receiverId: targetUserId, scheduledAt: when)
+            var payload = PostPayload.make(content: text, receiverId: recipientUserId, scheduledAt: when)
             payload.senderId = uid
             try await sendPost(payload: payload)
+            notifyReviewFeedRefresh()
             navigateToPostedFeed()
             reviewText = ""
             reviewApproved = false
@@ -331,6 +340,26 @@ final class WriteReviewViewModel: ObservableObject {
         if date < min { return min }
         if date > max { return max }
         return date
+    }
+
+    private var resolvedTargetUserId: String? {
+        guard let raw = targetUserId?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
+            return nil
+        }
+        return raw
+    }
+
+    private func requireTargetUserId() async -> String? {
+        guard let targetUserId = resolvedTargetUserId else {
+            print("[Post] blocked: missing receiverId for selected user \(String(describing: selectedUser))")
+            await showMessage("Couldn’t determine who this review is for. Please go back and select the user again.")
+            return nil
+        }
+        return targetUserId
+    }
+
+    private func notifyReviewFeedRefresh() {
+        NotificationCenter.default.post(name: .reviewFeedNeedsRefresh, object: nil)
     }
 
     private func navigateToPostedFeed() {
