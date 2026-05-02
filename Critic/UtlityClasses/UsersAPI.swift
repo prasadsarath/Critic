@@ -7,7 +7,6 @@
 
 import Foundation
 
-// Payload for https://fakestoreapi.com/users
 struct FSUser: Decodable {
     struct Name: Decodable { let firstname: String; let lastname: String }
     struct Geo: Decodable { let lat: String; let long: String }

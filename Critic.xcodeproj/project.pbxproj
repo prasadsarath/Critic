@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		291493BE2E266D9B007E2ED9 /* AppAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 291493BD2E266D9B007E2ED9 /* AppAuth */; };
 		7A0F00012F4B000100000001 /* Critic/Fonts in Resources */ = {isa = PBXBuildFile; fileRef = 7A0F00002F4B000100000001 /* Critic/Fonts */; };
+		7AFB10012F8B000100000001 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = 7AFB10002F8B000100000001 /* FirebaseCrashlytics */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -72,6 +73,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				291493BE2E266D9B007E2ED9 /* AppAuth in Frameworks */,
+				7AFB10012F8B000100000001 /* FirebaseCrashlytics in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -131,6 +133,7 @@
 				291E13832E252F50002930E9 /* Sources */,
 				291E13842E252F50002930E9 /* Frameworks */,
 				291E13852E252F50002930E9 /* Resources */,
+				7AFB10022F8B000100000001 /* Upload Crashlytics dSYMs */,
 			);
 			buildRules = (
 			);
@@ -142,6 +145,7 @@
 			name = Critic;
 			packageProductDependencies = (
 				291493BD2E266D9B007E2ED9 /* AppAuth */,
+				7AFB10002F8B000100000001 /* FirebaseCrashlytics */,
 			);
 			productName = Critic;
 			productReference = 291E13872E252F50002930E9 /* Critic.app */;
@@ -227,6 +231,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				291493BC2E266D98007E2ED9 /* XCRemoteSwiftPackageReference "AppAuth-iOS" */,
+				7AFB10032F8B000100000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 291E13882E252F50002930E9 /* Products */;
@@ -264,6 +269,33 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		7AFB10022F8B000100000001 /* Upload Crashlytics dSYMs */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}",
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${PRODUCT_NAME}",
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Info.plist",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/GoogleService-Info.plist",
+				"$(TARGET_BUILD_DIR)/$(EXECUTABLE_PATH)",
+			);
+			name = "Upload Crashlytics dSYMs";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		291E13832E252F50002930E9 /* Sources */ = {
@@ -424,14 +456,15 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 72CXPGDGFQ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Critic/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = critic;
-				INFOPLIST_KEY_NSCameraUsageDescription = "Camera access needed to take pictures for your post.";
 				INFOPLIST_KEY_NSContactsUsageDescription = "Critic uses your contacts to find which of your friends are already using the app and to let you invite others to join.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Critic uses your location to show nearby people and relevant reviews.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Photo library access needed to pick images for your profile.";
@@ -450,6 +483,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.critic.Critic;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -463,14 +497,15 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 72CXPGDGFQ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Critic/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = critic;
-				INFOPLIST_KEY_NSCameraUsageDescription = "Camera access needed to take pictures for your post.";
 				INFOPLIST_KEY_NSContactsUsageDescription = "Critic uses your contacts to find which of your friends are already using the app and to let you invite others to join.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Critic uses your location to show nearby people and relevant reviews.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Photo library access needed to pick images for your profile.";
@@ -489,6 +524,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.critic.Critic;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -627,6 +663,7 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		291493BC2E266D98007E2ED9 /* XCRemoteSwiftPackageReference "AppAuth-iOS" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -636,6 +673,14 @@
 				version = 2.0.0;
 			};
 		};
+		7AFB10032F8B000100000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.12.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -643,6 +688,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 291493BC2E266D98007E2ED9 /* XCRemoteSwiftPackageReference "AppAuth-iOS" */;
 			productName = AppAuth;
+		};
+		7AFB10002F8B000100000001 /* FirebaseCrashlytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7AFB10032F8B000100000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCrashlytics;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
