@@ -175,6 +175,25 @@ struct CriticOutlinedButtonStyle: ButtonStyle {
     }
 }
 
+enum CriticAppVersion {
+    static var displayText: String {
+        if let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
+           !version.isEmpty {
+            return "Version \(version)"
+        }
+        return "Version 1.0.6"
+    }
+}
+
+struct CriticVersionLabel: View {
+    var body: some View {
+        Text(CriticAppVersion.displayText)
+            .font(.critic(.caption))
+            .foregroundColor(CriticPalette.onSurfaceMuted)
+            .accessibilityLabel(CriticAppVersion.displayText)
+    }
+}
+
 struct CriticSoftIcon: View {
     let systemName: String
     let color: Color

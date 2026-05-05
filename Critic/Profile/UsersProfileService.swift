@@ -180,7 +180,7 @@ enum UsersProfileService {
         print(
             "[UsersProfileService] users_me decoded userId=\(user.userId ?? "nil") " +
             "name=\(user.name ?? user.displayName ?? user.aliasname ?? "nil") " +
-            "email=\(user.email ?? "nil")"
+            "email=\(user.email == nil ? "nil" : "stored")"
         )
         cacheCurrentUser(user)
         return user
@@ -210,7 +210,7 @@ enum UsersProfileService {
             "[UsersProfileService] users_get decoded targetUserId=\(userId) " +
             "resolvedUserId=\(user.userId ?? "nil") " +
             "name=\(user.name ?? user.displayName ?? user.aliasname ?? "nil") " +
-            "email=\(user.email ?? "nil")"
+            "email=\(user.email == nil ? "nil" : "stored")"
         )
         cacheUser(user)
         return user
@@ -378,8 +378,8 @@ enum UsersProfileService {
             longitude: fallback.longitude,
             profileImageName: fallback.profileImageName,
             displayName: resolvedName,
-            email: normalized(profile.email) ?? fallback.email,
-            phone: normalized(profile.phone) ?? fallback.phone,
+            email: nil,
+            phone: nil,
             profileUrl: resolvedProfileURL(from: profile) ?? fallback.profileUrl,
             distanceMeters: fallback.distanceMeters,
             isSimulated: fallback.isSimulated,
@@ -413,8 +413,8 @@ enum UsersProfileService {
         KnownUserDirectory.remember(
             userId: normalized(profile.userId),
             displayName: resolvedDisplayName(from: profile),
-            email: normalized(profile.email),
-            phone: normalized(profile.phone),
+            email: nil,
+            phone: nil,
             profileUrl: resolvedProfileURL(from: profile)
         )
     }
@@ -424,27 +424,10 @@ enum UsersProfileService {
         let name = normalized(profile.name) ?? normalized(profile.displayName)
         return DisplayNameResolver.preferredName(name, userId: userId)
             ?? DisplayNameResolver.preferredName(profile.aliasname, userId: userId)
-            ?? displayNameFromEmail(profile.email)
-            ?? displayNameFromPhone(profile.phone)
     }
 
     private static func resolvedProfileURL(from profile: UsersTableProfile) -> String? {
         normalized(profile.profileURL) ?? normalized(profile.avatarUrl)
-    }
-
-    private static func displayNameFromEmail(_ email: String?) -> String? {
-        guard let email = normalized(email),
-              let local = email.split(separator: "@", maxSplits: 1, omittingEmptySubsequences: true).first else {
-            return nil
-        }
-        return DisplayNameResolver.preferredName(String(local), userId: nil)
-    }
-
-    private static func displayNameFromPhone(_ phone: String?) -> String? {
-        guard let phone = normalized(phone) else { return nil }
-        let digits = phone.filter(\.isNumber)
-        guard digits.count >= 4 else { return nil }
-        return String(digits.suffix(min(4, digits.count)))
     }
 
     private static func normalized(_ value: String?) -> String? {

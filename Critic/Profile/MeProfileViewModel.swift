@@ -360,7 +360,7 @@ final class MeProfileViewModel: ObservableObject {
             print(
                 "[Profile] users_me success userId=\(identity?.sub ?? user?.userId ?? "nil") " +
                 "name=\(identity?.name ?? user?.name ?? "nil") " +
-                "email=\(identity?.email ?? "nil")"
+                "email=\(identity?.email == nil ? "nil" : "stored")"
             )
             errorText = nil
             return

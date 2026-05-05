@@ -295,8 +295,6 @@ private struct SelfProfileContent: View {
         let storedName = normalizedName(userName)
         if let storedName {
             self.name = storedName
-        } else if let emailName = nameFromEmail(userEmail) {
-            self.name = emailName
         } else {
             self.name = "Guest"
         }
@@ -323,8 +321,6 @@ private struct SelfProfileContent: View {
             applyName(preferredUsername)
         } else if let cognito = normalizedName(meVM.identity?.cognitoUsername) {
             applyName(cognito)
-        } else if let emailName = nameFromEmail(meVM.identity?.email ?? userEmail) {
-            applyName(emailName)
         }
 
         if let newEmail = meVM.identity?.email, !newEmail.isEmpty {
@@ -368,15 +364,6 @@ private struct SelfProfileContent: View {
         guard !trimmed.isEmpty else { return nil }
         if trimmed.caseInsensitiveCompare("guest") == .orderedSame { return nil }
         return trimmed
-    }
-
-    private func nameFromEmail(_ value: String?) -> String? {
-        guard let value else { return nil }
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-        if trimmed.caseInsensitiveCompare("guest@example.com") == .orderedSame { return nil }
-        let local = trimmed.split(separator: "@", maxSplits: 1, omittingEmptySubsequences: true).first
-        return normalizedName(local.map(String.init))
     }
 
     @ViewBuilder
@@ -435,18 +422,6 @@ private struct SelfProfileContent: View {
         }
         if let familyName = trimmedValue(meVM.identity?.familyName) {
             rows.append(("Last Name", familyName))
-        }
-        if let phoneNumber = trimmedValue(meVM.identity?.phoneNumber) {
-            rows.append(("Phone", phoneNumber))
-        }
-        if let emailAddress = trimmedValue(meVM.identity?.email ?? email) {
-            rows.append(("Email", emailAddress))
-        }
-        if let emailVerified = meVM.identity?.emailVerified {
-            rows.append(("Email Verified", emailVerified ? "Yes" : "No"))
-        }
-        if let phoneVerified = meVM.identity?.phoneNumberVerified {
-            rows.append(("Phone Verified", phoneVerified ? "Yes" : "No"))
         }
         if let profession = meVM.user?.profession {
             rows.append(("Profession", profession))
@@ -610,8 +585,7 @@ private struct ExternalProfileContent: View {
             let merged = UsersProfileService.merge(profile, onto: user)
             print(
                 "[ExternalProfile] users_get success requestedUserId=\(user.id) " +
-                "resolvedUserId=\(merged.id) name=\(merged.displayName ?? "nil") " +
-                "email=\(merged.email ?? "nil")"
+                "resolvedUserId=\(merged.id) name=\(merged.displayName ?? "nil")"
             )
             fetchedProfile = profile
             refreshedUser = merged
@@ -843,40 +817,6 @@ private struct CriticFormField: View {
     }
 }
 
-private struct CriticLockedValueField: View {
-    let title: String
-    let value: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.critic(.sectionHeader))
-                .foregroundColor(CriticPalette.onSurfaceMuted)
-
-            HStack(spacing: 12) {
-                Text(value)
-                    .font(.critic(.listTitle))
-                    .foregroundColor(CriticPalette.onSurface)
-                    .lineLimit(1)
-                Spacer(minLength: 8)
-                Image(systemName: "lock")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(CriticPalette.onSurfaceMuted)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 16)
-            .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(CriticPalette.surface)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(CriticPalette.outline, lineWidth: 1)
-                    )
-            )
-        }
-    }
-}
-
 private struct CriticMultilineField: View {
     let title: String
     let placeholder: String
@@ -980,7 +920,7 @@ struct EditProfileView: View {
         } else if let remoteAvatarURL, !remoteAvatarURL.isEmpty {
             AvatarView(
                 urlString: remoteAvatarURL,
-                seed: name.isEmpty ? email : name,
+                seed: name.isEmpty ? "profile" : name,
                 fallbackSystemName: "person.crop.circle.fill",
                 size: 116,
                 backgroundColor: CriticPalette.surface,
@@ -1038,7 +978,6 @@ struct EditProfileView: View {
                         textContentType: .name,
                         textInputAutocapitalization: .words
                     )
-                    CriticLockedValueField(title: "Email *", value: email)
                     CriticMultilineField(
                         title: "Bio",
                         placeholder: "Tell people what kind of feedback you like to receive.",
@@ -1230,7 +1169,7 @@ struct InviteRow: View {
 // MARK: - Settings View (iOS 15 safe)
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
-    @AppStorage("notifications_enabled") private var notificationsEnabled = true
+    @AppStorage(PostHogAnalytics.analyticsEnabledKey) private var analyticsEnabled = true
 
     var onDeleteAccountConfirmed: () -> Void
 
@@ -1243,12 +1182,15 @@ struct SettingsView: View {
 
                 CriticSettingsSection(title: "Preferences") {
                     CriticSettingsToggleRow(
-                        icon: "bell.badge.fill",
-                        title: "Notifications",
-                        subtitle: "Mentions and activity alerts",
-                        iconColor: CriticPalette.warning,
-                        isOn: $notificationsEnabled
+                        icon: "chart.line.uptrend.xyaxis",
+                        title: "Analytics",
+                        subtitle: "Help improve Critic with product analytics and session replay",
+                        iconColor: CriticPalette.primary,
+                        isOn: $analyticsEnabled
                     )
+                    .onChange(of: analyticsEnabled) { enabled in
+                        PostHogAnalytics.setAnalyticsEnabled(enabled)
+                    }
 
                     Divider().padding(.leading, 80)
 
@@ -1260,20 +1202,6 @@ struct SettingsView: View {
                             title: "Rate App",
                             subtitle: "Tell us how Critic is working for you",
                             iconColor: CriticPalette.warning
-                        )
-                    }
-                    .buttonStyle(.plain)
-                }
-
-                CriticSettingsSection(title: "Account") {
-                    NavigationLink {
-                        PrivacyVisibilityView()
-                    } label: {
-                        CriticSettingsRowLabel(
-                            icon: "lock.fill",
-                            title: "Privacy & Visibility",
-                            subtitle: "Control what others can see about you",
-                            iconColor: CriticPalette.primary
                         )
                     }
                     .buttonStyle(.plain)
@@ -1291,16 +1219,30 @@ struct SettingsView: View {
                         )
                     }
                     .buttonStyle(.plain)
+
+                    Divider().padding(.leading, 80)
+
+                    Button {
+                        UIApplication.shared.open(AppExternalLinks.privacy)
+                    } label: {
+                        CriticSettingsRowLabel(
+                            icon: "hand.raised.fill",
+                            title: "Privacy Policy",
+                            subtitle: "See how Critic handles your data",
+                            iconColor: CriticPalette.primary
+                        )
+                    }
+                    .buttonStyle(.plain)
                 }
 
                 CriticSettingsSection(title: "Support") {
-                    NavigationLink {
-                        HelpFeedbackView()
+                    Button {
+                        UIApplication.shared.open(AppExternalLinks.contactMailtoURL)
                     } label: {
                         CriticSettingsRowLabel(
-                            icon: "bubble.right.fill",
-                            title: "Help & Feedback",
-                            subtitle: "Send product suggestions or bug reports",
+                            icon: "envelope.fill",
+                            title: "Contact Support",
+                            subtitle: AppExternalLinks.contactEmail,
                             iconColor: CriticPalette.accent
                         )
                     }
@@ -1870,80 +1812,6 @@ private struct FeedbackSubmissionRow: View {
             return formatter.string(from: date)
         }
         return rawValue
-    }
-}
-
-// MARK: - Privacy & Visibility Screen
-struct PrivacyVisibilityView: View {
-    @Environment(\.dismiss) private var dismiss
-
-    @AppStorage("visibility_show_name") private var showName: Bool = true
-    @AppStorage("visibility_show_profile_pic") private var showProfilePic: Bool = true
-    @AppStorage("visibility_show_gender") private var showGender: Bool = false
-
-    @AppStorage("visibility_discover_by_phone") private var discoverByPhone: Bool = false
-    @AppStorage("visibility_discover_by_email") private var discoverByEmail: Bool = true
-
-    var body: some View {
-        VStack(spacing: 16) {
-            CriticDetailHeader(title: "Privacy & Visibility") {
-                dismiss()
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
-
-            List {
-                Section {
-                    Toggle(isOn: $showName) {
-                        Text("Name")
-                            .font(.critic(.listTitle))
-                            .foregroundColor(CriticPalette.onSurface)
-                    }
-                    Toggle(isOn: $showProfilePic) {
-                        Text("Profile picture")
-                            .font(.critic(.listTitle))
-                            .foregroundColor(CriticPalette.onSurface)
-                    }
-                    Toggle(isOn: $showGender) {
-                        Text("Gender")
-                            .font(.critic(.listTitle))
-                            .foregroundColor(CriticPalette.onSurface)
-                    }
-                } header: {
-                    Text("Show on your profile")
-                        .font(.critic(.sectionHeader))
-                        .foregroundColor(CriticPalette.onSurfaceMuted)
-                }
-
-                Section {
-                    Toggle(isOn: $discoverByPhone) {
-                        Text("Allow discovery by phone")
-                            .font(.critic(.listTitle))
-                            .foregroundColor(CriticPalette.onSurface)
-                    }
-                    Toggle(isOn: $discoverByEmail) {
-                        Text("Allow discovery by email")
-                            .font(.critic(.listTitle))
-                            .foregroundColor(CriticPalette.onSurface)
-                    }
-                } header: {
-                    Text("Let others find you")
-                        .font(.critic(.sectionHeader))
-                        .foregroundColor(CriticPalette.onSurfaceMuted)
-                } footer: {
-                    Text("If enabled, people who have your contact may find you on Critic. We never show contact details.")
-                        .font(.critic(.body))
-                        .foregroundColor(CriticPalette.onSurfaceMuted)
-                }
-            }
-            .modifier(ScrollBGHider())
-            .listStyle(.insetGrouped)
-            .tint(CriticPalette.primary)
-        }
-        .background(CriticPalette.background.ignoresSafeArea())
-        .environment(\.colorScheme, .light)
-        .navigationBarBackButtonHidden(true)
-        .navigationBarHidden(true)
     }
 }
 

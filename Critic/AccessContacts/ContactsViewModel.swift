@@ -61,10 +61,16 @@ final class ContactsViewModel: ObservableObject {
 
     func refresh() async { await safeLoad() }
 
-    func requestAccessAndLoad() async {
-        await requestPermissionLegacy()
+    @discardableResult
+    func requestAccessAndLoad() async -> Bool {
+        await refreshPermission()
+        if permissionStatus == .notDetermined {
+            await requestPermissionLegacy()
+        }
+
         if hasUsableAccess {
             await safeLoad()
+            return true
         } else if permissionStatus == .notDetermined {
             errorMessage = nil
         } else {
@@ -72,6 +78,7 @@ final class ContactsViewModel: ObservableObject {
             registered = []
             invitable = []
         }
+        return false
     }
 
     // MARK: Permission
@@ -105,10 +112,12 @@ final class ContactsViewModel: ObservableObject {
             return
         } catch {
             print("[ContactsVM] load error: \(error)")
-            errorMessage = error.localizedDescription
-            registered = []
-            invitable = []
+            errorMessage = contactsLookupUnavailableMessage
         }
+    }
+
+    private var contactsLookupUnavailableMessage: String {
+        "Couldn’t refresh contacts right now. Please try again."
     }
 
     private func loadContactsAndLookup() async throws {

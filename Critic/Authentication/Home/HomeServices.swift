@@ -78,20 +78,30 @@ final class NavigationManager: ObservableObject {
 final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let locationManager = CLLocationManager()
     @Published var currentLocation: CLLocation?
-    @Published var currentAddress = "Enable location to see people nearby"
+    @Published var currentAddress = "Location helps show people and reviews nearby"
     @Published var authorizationStatus: CLAuthorizationStatus
     @Published var accuracyAuthorization: CLAccuracyAuthorization
+    @Published var isLocationFixUnavailable = false
 
     private var lastGeocodeTime: Date = .distantPast
     private let geocodeCooldown: TimeInterval = 10
+    private let geocoder = CLGeocoder()
+    private var isReverseGeocoding = false
     private var recentGoodLocations: [CLLocation] = []
+    private var lastAuthorizationRefreshAt: Date = .distantPast
+    private let authorizationRefreshCooldown: TimeInterval = 2
     private var lastTemporaryFullAccuracyRequestAt: Date = .distantPast
     private let temporaryFullAccuracyRequestCooldown: TimeInterval = 60
+    private var lastOneShotLocationRequestAt: Date = .distantPast
+    private let oneShotLocationRequestCooldown: TimeInterval = 10
+    private var isUpdatingLocation = false
+    private var didRequestInitialFix = false
+    private var didRequestWhenInUseAuthorization = false
 
     /// Creates and configures the nearby location manager.
     ///
-    /// The initializer captures the current authorization state, applies high-accuracy Core Location
-    /// settings for nearby detection, and begins monitoring immediately when permission is already granted.
+    /// The initializer captures the current authorization state and applies high-accuracy Core
+    /// Location settings. Monitoring starts later when the nearby screen actually needs it.
     override init() {
         authorizationStatus = locationManager.authorizationStatus
         accuracyAuthorization = locationManager.accuracyAuthorization
@@ -101,7 +111,6 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
         locationManager.distanceFilter = 1
         locationManager.activityType = .fitness
         locationManager.pausesLocationUpdatesAutomatically = false
-        beginMonitoringIfAuthorized()
     }
 
     /// Returns the freshest nearby-ready location available to the app.
@@ -152,12 +161,13 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
     ///
     /// The manager refreshes authorization state, requests temporary precise location when needed,
     /// triggers a one-shot location request if no usable fix exists yet, and then starts continuous updates.
-    func beginMonitoringIfAuthorized() {
-        authorizationStatus = currentAuthorizationStatus()
-        accuracyAuthorization = locationManager.accuracyAuthorization
+    func beginMonitoringIfAuthorized(refreshState: Bool = true) {
+        if refreshState {
+            refreshAuthorizationState()
+        }
         guard authorizationStatus == .authorizedAlways || authorizationStatus == .authorizedWhenInUse else {
             if authorizationStatus == .denied || authorizationStatus == .restricted {
-                currentAddress = "Enable location in Settings to see people nearby"
+                currentAddress = "Enable Location in Settings for nearby people and reviews"
             }
             return
         }
@@ -165,11 +175,20 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
         locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
         requestTemporaryFullAccuracyIfNeeded()
 
-        if effectiveLocation == nil {
+        let now = Date()
+        if effectiveLocation == nil,
+           !didRequestInitialFix,
+           now.timeIntervalSince(lastOneShotLocationRequestAt) >= oneShotLocationRequestCooldown {
             currentAddress = pendingLocationMessage()
+            isLocationFixUnavailable = false
+            didRequestInitialFix = true
+            lastOneShotLocationRequestAt = now
             locationManager.requestLocation()
         }
-        locationManager.startUpdatingLocation()
+        if !isUpdatingLocation {
+            isUpdatingLocation = true
+            locationManager.startUpdatingLocation()
+        }
     }
 
     /// Requests location access when the nearby feature needs it.
@@ -177,18 +196,20 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
     /// Authorized users move directly into active monitoring, undecided users are prompted for
     /// `when in use` permission, and denied users receive a Settings-focused status message.
     func requestAccessIfNeeded() {
-        authorizationStatus = currentAuthorizationStatus()
+        refreshAuthorizationState(force: true)
 
         switch authorizationStatus {
         case .authorizedAlways, .authorizedWhenInUse:
-            beginMonitoringIfAuthorized()
+            beginMonitoringIfAuthorized(refreshState: false)
         case .notDetermined:
-            currentAddress = "Allow location to see people nearby"
+            guard !didRequestWhenInUseAuthorization else { return }
+            didRequestWhenInUseAuthorization = true
+            currentAddress = "Location helps show people and reviews nearby"
             locationManager.requestWhenInUseAuthorization()
         case .denied, .restricted:
-            currentAddress = "Enable location in Settings to see people nearby"
+            currentAddress = "Enable Location in Settings for nearby people and reviews"
         @unknown default:
-            currentAddress = "Enable location to see people nearby"
+            currentAddress = "Location helps show people and reviews nearby"
         }
     }
 
@@ -199,6 +220,8 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
     func stopUpdating() {
         locationManager.stopUpdatingLocation()
         recentGoodLocations.removeAll(keepingCapacity: true)
+        isUpdatingLocation = false
+        didRequestInitialFix = false
     }
 
     /// Responds to authorization or precise-location accuracy changes from Core Location.
@@ -208,22 +231,24 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
     ///
     /// - Parameter manager: The `CLLocationManager` reporting the authorization change.
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        authorizationStatus = manager.authorizationStatus
-        accuracyAuthorization = manager.accuracyAuthorization
+        updateAuthorizationState(
+            status: manager.authorizationStatus,
+            accuracy: manager.accuracyAuthorization
+        )
         print("[GPS] Authorization changed status=\(authorizationStatus.rawValue) accuracy=\(accuracyAuthorization == .fullAccuracy ? "full" : "reduced")")
 
         switch authorizationStatus {
         case .authorizedAlways, .authorizedWhenInUse:
-            beginMonitoringIfAuthorized()
+            beginMonitoringIfAuthorized(refreshState: false)
         case .denied, .restricted:
             currentLocation = nil
             recentGoodLocations.removeAll(keepingCapacity: true)
-            currentAddress = "Enable location in Settings to see people nearby"
+            currentAddress = "Enable Location in Settings for nearby people and reviews"
             stopUpdating()
         case .notDetermined:
-            currentAddress = "Enable location to see people nearby"
+            currentAddress = "Location helps show people and reviews nearby"
         @unknown default:
-            currentAddress = "Enable location to see people nearby"
+            currentAddress = "Location helps show people and reviews nearby"
         }
     }
 
@@ -260,6 +285,8 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
 
         DispatchQueue.main.async {
             self.currentLocation = location
+            self.isLocationFixUnavailable = false
+            self.didRequestInitialFix = false
             self.persist(location: location)
             self.tryReverseGeocode(location: location)
         }
@@ -275,18 +302,48 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
     ///   - error: The underlying Core Location failure.
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         print("[GPS] Failed to update location: \(error.localizedDescription)")
+        didRequestInitialFix = false
         if currentLocation == nil {
-            currentAddress = pendingLocationMessage()
+            isLocationFixUnavailable = true
+            currentAddress = "Current location unavailable"
         }
     }
 
-    /// Reads the current Core Location authorization status.
+    /// Retries a foreground location fix after Core Location reports that no coordinate is available.
+    func retryLocationFix() {
+        isLocationFixUnavailable = false
+        didRequestInitialFix = false
+        lastOneShotLocationRequestAt = .distantPast
+        currentAddress = pendingLocationMessage()
+        beginMonitoringIfAuthorized(refreshState: true)
+    }
+
+    /// Refreshes Core Location authorization and accuracy state.
     ///
-    /// This small wrapper keeps status access centralized so authorization refreshes use one path.
-    ///
-    /// - Returns: The current `CLAuthorizationStatus` reported by Core Location.
-    private func currentAuthorizationStatus() -> CLAuthorizationStatus {
-        locationManager.authorizationStatus
+    /// The refresh is throttled unless `force` is true, so repeated SwiftUI lifecycle events do not
+    /// repeatedly query Core Location.
+    func refreshAuthorizationState(force: Bool = false) {
+        let now = Date()
+        guard force || now.timeIntervalSince(lastAuthorizationRefreshAt) >= authorizationRefreshCooldown else {
+            return
+        }
+        lastAuthorizationRefreshAt = now
+        updateAuthorizationState(
+            status: locationManager.authorizationStatus,
+            accuracy: locationManager.accuracyAuthorization
+        )
+    }
+
+    private func updateAuthorizationState(
+        status: CLAuthorizationStatus,
+        accuracy: CLAccuracyAuthorization
+    ) {
+        if authorizationStatus != status {
+            authorizationStatus = status
+        }
+        if accuracyAuthorization != accuracy {
+            accuracyAuthorization = accuracy
+        }
     }
 
     /// Builds the status message shown while nearby location is unresolved.
@@ -438,18 +495,23 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
     ///
     /// - Parameter location: The location to reverse geocode.
     private func reverseGeocode(location: CLLocation) {
-        CLGeocoder().reverseGeocodeLocation(location) { placemarks, error in
-            guard let placemark = placemarks?.first, error == nil else {
-                if self.currentLocation != nil {
-                    self.currentAddress = "Unable to fetch address"
+        guard !isReverseGeocoding else { return }
+        isReverseGeocoding = true
+        geocoder.reverseGeocodeLocation(location) { placemarks, error in
+            DispatchQueue.main.async {
+                self.isReverseGeocoding = false
+                guard let placemark = placemarks?.first, error == nil else {
+                    if self.currentLocation != nil {
+                        self.currentAddress = "Unable to fetch address"
+                    }
+                    return
                 }
-                return
+                self.currentAddress = [
+                    placemark.name,
+                    placemark.locality,
+                    placemark.administrativeArea
+                ].compactMap { $0 }.joined(separator: ", ")
             }
-            self.currentAddress = [
-                placemark.name,
-                placemark.locality,
-                placemark.administrativeArea
-            ].compactMap { $0 }.joined(separator: ", ")
         }
     }
 }

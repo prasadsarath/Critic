@@ -125,8 +125,6 @@ struct NearbyUser: Identifiable, Decodable, Equatable {
         }
 
         let resolvedName = firstString([.name, .displayName, .display_name, .userName, .username, .aliasName, .aliasname, .fullName, .full_name, .preferredUsername, .preferred_username, .nickname])
-        let resolvedEmail = firstString([.email, .userEmail])
-        let resolvedPhone = firstString([.phone, .phoneNumber, .phone_number, .mobile, .mobileNumber, .mobile_number])
         let resolvedAvatar = firstString([.avatarUrl, .avatarURL, .profileUrl, .profile_url, .photoUrl, .photo_url, .imageUrl, .image_url])
 
         guard let resolvedLat = firstDouble([.lat, .latitude]),
@@ -138,8 +136,8 @@ struct NearbyUser: Identifiable, Decodable, Equatable {
 
         self.userId = resolvedUserId
         self.name = resolvedName
-        self.email = resolvedEmail
-        self.phone = resolvedPhone
+        self.email = nil
+        self.phone = nil
         self.avatarUrl = resolvedAvatar
         self.lat = resolvedLat
         self.lon = resolvedLon
@@ -307,22 +305,20 @@ final class AWSWebSocketClient: NSObject, ObservableObject {
     // MARK: - Convenience payloads (match Lambda actions)
     /// Sends the user's current location to the nearby socket backend.
     ///
-    /// The payload contains the existing websocket contract fields only, while optional identity
-    /// fields are included when present so nearby users can be rendered without extra lookups.
+    /// The payload contains the existing websocket contract fields plus non-sensitive display
+    /// metadata needed to render nearby users without extra lookups.
     ///
     /// - Parameters:
     ///   - userId: The authenticated user identifier.
     ///   - latitude: The latitude being published to the socket backend.
     ///   - longitude: The longitude being published to the socket backend.
     ///   - displayName: The optional display name attached to the update.
-    ///   - email: The optional email attached to the update.
     ///   - profileUrl: The optional profile image URL attached to the update.
     func sendUpdateLocation(
         userId: String,
         latitude: Double,
         longitude: Double,
         displayName: String? = nil,
-        email: String? = nil,
         profileUrl: String? = nil
     ) {
         var payload: [String: Any] = [
@@ -333,9 +329,6 @@ final class AWSWebSocketClient: NSObject, ObservableObject {
         ]
         if let displayName, !displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             payload["name"] = displayName
-        }
-        if let email, !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            payload["email"] = email
         }
         if let profileUrl, !profileUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             payload["profile_url"] = profileUrl
@@ -357,7 +350,6 @@ final class AWSWebSocketClient: NSObject, ObservableObject {
     ///   - longitude: The longitude used as the nearby search center.
     ///   - radiusMeters: The nearby search radius in meters.
     ///   - displayName: The optional display name attached to the request.
-    ///   - email: The optional email attached to the request.
     ///   - profileUrl: The optional profile image URL attached to the request.
     func sendGetNearbyUsers(
         userId: String,
@@ -365,7 +357,6 @@ final class AWSWebSocketClient: NSObject, ObservableObject {
         longitude: Double,
         radiusMeters: Double,
         displayName: String? = nil,
-        email: String? = nil,
         profileUrl: String? = nil
     ) {
         var payload: [String: Any] = [
@@ -377,9 +368,6 @@ final class AWSWebSocketClient: NSObject, ObservableObject {
         ]
         if let displayName, !displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             payload["name"] = displayName
-        }
-        if let email, !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            payload["email"] = email
         }
         if let profileUrl, !profileUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             payload["profile_url"] = profileUrl
@@ -460,7 +448,7 @@ final class AWSWebSocketClient: NSObject, ObservableObject {
                     log("[Nearby] parsed 0 user(s)")
                 } else {
                     let summaries = arr.map {
-                        let raw = $0.name ?? $0.email ?? $0.phone ?? "nil"
+                        let raw = $0.name ?? "unnamed"
                         return "\($0.userId):\(raw)"
                     }.joined(separator: ", ")
                     log("[Nearby] parsed \(arr.count) user(s): \(summaries)")
@@ -468,7 +456,7 @@ final class AWSWebSocketClient: NSObject, ObservableObject {
                 DispatchQueue.main.async { self.nearbyUsers = arr }
             } else if !arr.isEmpty {
                 let summaries = arr.map {
-                    let raw = $0.name ?? $0.email ?? $0.phone ?? "nil"
+                    let raw = $0.name ?? "unnamed"
                     return "\($0.userId):\(raw)"
                 }.joined(separator: ", ")
                 log("[Nearby] parsed \(arr.count) user(s): \(summaries)")

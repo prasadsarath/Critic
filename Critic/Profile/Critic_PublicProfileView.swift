@@ -35,12 +35,6 @@ struct PublicProfileView: View {
                     .foregroundColor(.secondary)
             }
 
-            if let email = DisplayNameResolver.normalizedEmail(hydratedUser.email) {
-                Text(email)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
-
             // Add more public fields here as you introduce them (bio, mutuals, etc.)
 
             Spacer()

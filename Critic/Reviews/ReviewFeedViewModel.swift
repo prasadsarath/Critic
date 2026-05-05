@@ -149,9 +149,9 @@ final class ReviewFeedViewModel: ObservableObject {
             )
             if reviewFeedDebugLoggingEnabled {
                 let storedName = UserDefaults.standard.string(forKey: "userName") ?? "nil"
-                let storedEmail = UserDefaults.standard.string(forKey: "userEmail") ?? "nil"
+                let hasStoredEmail = UserDefaults.standard.string(forKey: "userEmail") != nil
                 print("[ReviewFeed] GET \(listURL.absoluteString)?userId=\(userId)")
-                print("[ReviewFeed] current identity userId=\(userId) userName=\(storedName) userEmail=\(storedEmail)")
+                print("[ReviewFeed] current identity userId=\(userId) userName=\(storedName) userEmail=\(hasStoredEmail ? "stored" : "nil")")
             }
             let (data, response) = try await APIRequestExecutor.shared.perform(request)
             if reviewFeedDebugLoggingEnabled {

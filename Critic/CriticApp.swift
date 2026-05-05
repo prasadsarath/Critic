@@ -248,7 +248,7 @@ struct StartupAuthView: View {
                 }
                 .buttonStyle(CriticFilledButtonStyle())
 
-                Text("By tapping sign in you Agree our terms & conditions")
+                Text("By tapping Sign in, you agree to Critic's Terms & Conditions and Privacy Policy.")
                     .font(.critic(.caption))
                     .foregroundColor(CriticPalette.onSurfaceMuted)
                     .multilineTextAlignment(.center)
@@ -267,7 +267,10 @@ struct StartupAuthView: View {
                     }
                 }
                 .padding(.top, 14)
-                .padding(.bottom, 24)
+
+                CriticVersionLabel()
+                    .padding(.top, 12)
+                    .padding(.bottom, 24)
             }
             .padding(.horizontal, 24)
 

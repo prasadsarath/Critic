@@ -778,6 +778,127 @@ private struct PremiumHeaderRefreshButton: View {
     }
 }
 
+private enum NearbyLocationGateState {
+    case needsPermission
+    case needsPreciseLocation
+    case locationUnavailable
+    case settingsRequired
+
+    var systemImage: String {
+        switch self {
+        case .needsPermission: return "location.circle.fill"
+        case .needsPreciseLocation: return "location.magnifyingglass"
+        case .locationUnavailable: return "location.slash.circle.fill"
+        case .settingsRequired: return "gearshape.fill"
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .needsPermission: return "Enable location for nearby"
+        case .needsPreciseLocation: return "Enable Precise Location"
+        case .locationUnavailable: return "Current location unavailable"
+        case .settingsRequired: return "Location is off for Critic"
+        }
+    }
+
+    var message: String {
+        switch self {
+        case .needsPermission:
+            return "Critic uses your location while you use the app. Your location is sent to Critic servers to show nearby people and reviews and update the live nearby view."
+        case .needsPreciseLocation:
+            return "Critic uses Precise Location while you use the app and sends it to Critic servers to calculate nearby matching, distances, and the live nearby view accurately."
+        case .locationUnavailable:
+            return "Critic has location permission, but iOS has not provided a usable location yet. Keep Location Services and Precise Location on, then try again."
+        case .settingsRequired:
+            return "To use the live nearby view, enable Location for Critic in Settings. Critic sends your location to Critic servers only while you use the app to show nearby people and reviews."
+        }
+    }
+
+    var actionTitle: String {
+        switch self {
+        case .needsPermission, .needsPreciseLocation: return "Continue"
+        case .locationUnavailable: return "Try Again"
+        case .settingsRequired: return "Open Settings"
+        }
+    }
+
+    var actionIcon: String {
+        switch self {
+        case .needsPermission, .needsPreciseLocation: return "arrow.right.circle.fill"
+        case .locationUnavailable: return "arrow.clockwise.circle.fill"
+        case .settingsRequired: return "gearshape.fill"
+        }
+    }
+}
+
+private struct NearbyLocationPermissionView: View {
+    let state: NearbyLocationGateState
+    let onContinue: () -> Void
+    let onOpenSettings: () -> Void
+
+    var body: some View {
+        VStack(spacing: 18) {
+            Spacer(minLength: 0)
+
+            CriticSoftIcon(
+                systemName: state.systemImage,
+                color: CriticPalette.primary,
+                size: 62,
+                iconSize: 27,
+                opacity: 0.12
+            )
+
+            VStack(spacing: 10) {
+                Text(state.title)
+                    .font(.critic(.pageTitle))
+                    .foregroundColor(CriticPalette.onSurface)
+                    .multilineTextAlignment(.center)
+
+                Text(state.message)
+                    .font(.critic(.body))
+                    .foregroundColor(CriticPalette.onSurfaceMuted)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: 520)
+
+            Button {
+                switch state {
+                case .needsPermission, .needsPreciseLocation, .locationUnavailable:
+                    onContinue()
+                case .settingsRequired:
+                    onOpenSettings()
+                }
+            } label: {
+                Label(state.actionTitle, systemImage: state.actionIcon)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(CriticFilledButtonStyle())
+            .frame(maxWidth: 520)
+            .padding(.top, 2)
+
+            if state == .locationUnavailable {
+                Button {
+                    onOpenSettings()
+                } label: {
+                    Label("Open Settings", systemImage: "gearshape.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(CriticOutlinedButtonStyle())
+                .frame(maxWidth: 520)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 28)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Theme.background)
+    }
+}
+
 // MARK: - Home View
 struct HomeView: View {
     @StateObject private var locationManager = LocationManager()
@@ -809,13 +930,11 @@ struct HomeView: View {
 
     // Reactive user name shown in top bar
     @AppStorage("userName") private var storedUserName: String = ""
-    @AppStorage("userEmail") private var storedUserEmail: String = ""
     @AppStorage("userProfileUrl") private var storedUserProfileURL: String = ""
     private var displayName: String {
         DisplayNameResolver.homeHeaderName(
             storedName: storedUserName,
-            userId: UserDefaults.standard.string(forKey: "userId"),
-            email: storedUserEmail
+            userId: UserDefaults.standard.string(forKey: "userId")
         )
     }
     private var currentProfileURL: String? {
@@ -841,6 +960,8 @@ struct HomeView: View {
     @State private var lastNearbySyncCoordinate: CLLocationCoordinate2D?
     @State private var pendingNearbyRefresh: PendingNearbyRefresh?
     @State private var tagToggleObserver: NSObjectProtocol?
+    @State private var lastHandledAuthorizationStatus: CLAuthorizationStatus?
+    @State private var lastHandledAccuracyAuthorization: CLAccuracyAuthorization?
 
     // ✅ Single active alert only
     @State private var activeAlert: AlertPayload? = nil
@@ -851,8 +972,8 @@ struct HomeView: View {
         let reason: String
     }
 
-    private let nearbyRefreshCooldown: TimeInterval = 0.25
-    private let nearbyRefreshDistanceThreshold: CLLocationDistance = 0.25
+    private let nearbyRefreshCooldown: TimeInterval = 2
+    private let nearbyRefreshDistanceThreshold: CLLocationDistance = 3
     private var isRunningPreview: Bool {
         ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
     }
@@ -906,7 +1027,6 @@ struct HomeView: View {
                 longitude: coord.longitude,
                 profileImageName: "person.fill",
                 displayName: "You",
-                email: storedUserEmail,
                 profileUrl: currentProfileURL
             )
         } else if let first = userLocations.first {
@@ -916,7 +1036,6 @@ struct HomeView: View {
                 longitude: first.longitude,
                 profileImageName: "person.fill",
                 displayName: "You",
-                email: storedUserEmail,
                 profileUrl: currentProfileURL
             )
         } else {
@@ -926,7 +1045,6 @@ struct HomeView: View {
                 longitude: 0,
                 profileImageName: "person.fill",
                 displayName: "You",
-                email: storedUserEmail,
                 profileUrl: currentProfileURL
             )
         }
@@ -951,6 +1069,24 @@ struct HomeView: View {
     }
     private var isLocationDrivenTab: Bool {
         selectedTab == .home || selectedTab == .list
+    }
+    private var hasNearbyLocationAuthorization: Bool {
+        locationManager.authorizationStatus == .authorizedAlways ||
+        locationManager.authorizationStatus == .authorizedWhenInUse
+    }
+    private var nearbyLocationGateState: NearbyLocationGateState? {
+        guard isLocationDrivenTab else { return nil }
+
+        switch locationManager.authorizationStatus {
+        case .notDetermined:
+            return nil
+        case .denied, .restricted:
+            return .settingsRequired
+        case .authorizedAlways, .authorizedWhenInUse:
+            return locationManager.effectiveCoordinate == nil ? .locationUnavailable : nil
+        @unknown default:
+            return .settingsRequired
+        }
     }
 
     private var statusText: String {
@@ -1025,13 +1161,19 @@ struct HomeView: View {
         NavigationManager.shared.showProfile = true
         print(
             "[Nav] Open profile userId=\(hydratedUser.id) " +
-            "name=\(hydratedUser.displayName ?? "nil") " +
-            "email=\(hydratedUser.email ?? "nil")"
+            "name=\(hydratedUser.displayName ?? "nil")"
         )
     }
 
     // MARK: - WebSocket orchestration
     private func connectSocketIfReady() {
+        guard hasNearbyLocationAuthorization else {
+            print("[WS] connect skipped: waiting for location permission")
+            return
+        }
+        guard locationManager.effectiveCoordinate != nil else {
+            return
+        }
         guard let uid = currentUserId() else {
             print("[WS] connect skipped: missing userId")
             return
@@ -1204,28 +1346,44 @@ struct HomeView: View {
     private var selectedTabContent: some View {
         switch selectedTab {
         case .home:
-            RelativeUserMap(
-                centerUser: centerUser,
-                otherUsers: activeUsers,
-                onWrite: { user in attemptWrite(user: user) },
-                onOpenProfile: { user in openProfile(for: user) },
-                selectedUser: $selectedUser,
-                selectedDistance: $selectedDistance
-            )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Theme.background)
+            if let gateState = nearbyLocationGateState {
+                NearbyLocationPermissionView(
+                    state: gateState,
+                    onContinue: continueLocationPermissionFlow,
+                    onOpenSettings: openAppLocationSettings
+                )
+            } else {
+                RelativeUserMap(
+                    centerUser: centerUser,
+                    otherUsers: activeUsers,
+                    onWrite: { user in attemptWrite(user: user) },
+                    onOpenProfile: { user in openProfile(for: user) },
+                    selectedUser: $selectedUser,
+                    selectedDistance: $selectedDistance
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Theme.background)
+            }
 
         case .list:
-            UsersListView(
-                centerUser: centerUser,
-                allUsers: activeUsers,
-                onWrite: { user in attemptWrite(user: user) },
-                onTagToggle: { user in handleTagToggle(for: user) },
-                isTagged: { user in tagVM.isTagged(user.id) },
-                onOpenProfile: { user in openProfile(for: user) }
-            )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Theme.background)
+            if let gateState = nearbyLocationGateState {
+                NearbyLocationPermissionView(
+                    state: gateState,
+                    onContinue: continueLocationPermissionFlow,
+                    onOpenSettings: openAppLocationSettings
+                )
+            } else {
+                UsersListView(
+                    centerUser: centerUser,
+                    allUsers: activeUsers,
+                    onWrite: { user in attemptWrite(user: user) },
+                    onTagToggle: { user in handleTagToggle(for: user) },
+                    isTagged: { user in tagVM.isTagged(user.id) },
+                    onOpenProfile: { user in openProfile(for: user) }
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Theme.background)
+            }
 
         case .posts:
             ReviewFeedView(tabSelection: $postsFeedTab, showNavigationTitle: false, showsTabBar: false)
@@ -1259,8 +1417,6 @@ struct HomeView: View {
                     profileImageName: "person.circle.fill",
                     displayName: DisplayNameResolver.resolve(
                         displayName: displayName ?? KnownUserDirectory.name(for: userId),
-                        email: KnownUserDirectory.email(for: userId),
-                        phone: KnownUserDirectory.phone(for: userId),
                         userId: userId
                     ),
                     profileUrl: nil
@@ -1326,17 +1482,15 @@ struct HomeView: View {
                     storedUserName = name
                 }
 
-                OIDCAuthManager.shared.printUserSnapshot(tag: "Home.onAppear(before refresh)")
-                OIDCAuthManager.shared.refreshIfNeeded { _ in
-                    if let latest = UserDefaults.standard.string(forKey: "userName"),
-                       !latest.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        storedUserName = latest
-                    }
-                    OIDCAuthManager.shared.printUserSnapshot(tag: "Home.onAppear(after refresh)")
+                OIDCAuthManager.shared.printUserSnapshot(tag: "Home.onAppear(before sync)")
+                if let latest = UserDefaults.standard.string(forKey: "userName"),
+                   !latest.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    storedUserName = latest
                 }
+                OIDCAuthManager.shared.printUserSnapshot(tag: "Home.onAppear(after sync)")
 
+                syncLocationMonitoring(for: selectedTab, forceRefresh: true)
                 connectSocketIfReady()
-                syncLocationMonitoring(for: selectedTab)
                 pushAndFetchNearby(force: true, reason: "home appear")
                 Task { await contactsVM.bootstrap() }
                 KnownUserDirectory.rememberCurrentUserFromDefaults()
@@ -1366,13 +1520,11 @@ struct HomeView: View {
 
                             let incomingUsers = users.map { item -> UserLocation in
                                 let avatar = extractProfileURL(from: item) ?? KnownUserDirectory.profileUrl(for: item.userId)
-                                let cachedEmail = item.email ?? KnownUserDirectory.email(for: item.userId)
-                                let cachedPhone = item.phone ?? KnownUserDirectory.phone(for: item.userId)
                                 KnownUserDirectory.remember(
                                     userId: item.userId,
                                     displayName: item.name,
-                                    email: cachedEmail,
-                                    phone: cachedPhone,
+                                    email: nil,
+                                    phone: nil,
                                     profileUrl: avatar
                                 )
 
@@ -1383,12 +1535,8 @@ struct HomeView: View {
                                     profileImageName: "person.circle.fill",
                                     displayName: DisplayNameResolver.resolve(
                                         displayName: item.name ?? KnownUserDirectory.name(for: item.userId),
-                                        email: cachedEmail,
-                                        phone: cachedPhone,
                                         userId: item.userId
                                     ),
-                                    email: cachedEmail,
-                                    phone: cachedPhone,
                                     profileUrl: avatar,
                                     distanceMeters: item.distanceM,
                                     isSimulated: item.isSimulated,
@@ -1493,7 +1641,7 @@ struct HomeView: View {
                        !latest.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         storedUserName = latest
                     }
-                    syncLocationMonitoring(for: selectedTab)
+                    syncLocationMonitoring(for: selectedTab, forceRefresh: true)
                     connectSocketIfReady()
                     pushAndFetchNearby(force: true, reason: "scene active")
                 case .background, .inactive:
@@ -1503,8 +1651,34 @@ struct HomeView: View {
                 }
             }
 
+            .onReceive(locationManager.$authorizationStatus.removeDuplicates()) { status in
+                guard isHomeActive else { return }
+                guard lastHandledAuthorizationStatus != status else { return }
+                lastHandledAuthorizationStatus = status
+                switch status {
+                case .authorizedAlways, .authorizedWhenInUse:
+                    connectSocketIfReady()
+                case .denied, .restricted:
+                    disconnectSocket(reason: "location unavailable")
+                case .notDetermined:
+                    break
+                @unknown default:
+                    disconnectSocket(reason: "location unavailable")
+                }
+            }
+
+            .onReceive(locationManager.$accuracyAuthorization.removeDuplicates()) { accuracy in
+                guard isHomeActive, hasNearbyLocationAuthorization else { return }
+                guard lastHandledAccuracyAuthorization != accuracy else { return }
+                lastHandledAccuracyAuthorization = accuracy
+                if accuracy == .fullAccuracy {
+                    connectSocketIfReady()
+                }
+            }
+
             .onReceive(tick) { _ in
                 guard isHomeActive, isLocationDrivenTab else { return }
+                guard locationManager.effectiveCoordinate != nil else { return }
                 pushAndFetchNearby(reason: "periodic tick")
             }
 
@@ -1515,12 +1689,20 @@ struct HomeView: View {
 
             .onReceive(socket.$state.removeDuplicates()) { state in
                 guard isHomeActive else { return }
-                guard case .connected = state, let pending = pendingNearbyRefresh else { return }
-                pushAndFetchNearby(
-                    force: pending.force,
-                    promptForLocation: pending.promptForLocation,
-                    reason: "\(pending.reason) (socket opened)"
-                )
+                guard case .connected = state else { return }
+
+                if let pending = pendingNearbyRefresh {
+                    pendingNearbyRefresh = nil
+                    pushAndFetchNearby(
+                        force: pending.force,
+                        promptForLocation: pending.promptForLocation,
+                        reason: "\(pending.reason) (socket opened)"
+                    )
+                    return
+                }
+
+                guard isLocationDrivenTab, hasNearbyLocationAuthorization else { return }
+                pushAndFetchNearby(force: true, reason: "socket connected")
             }
 
             .alert(item: $activeAlert) { payload in
@@ -1574,6 +1756,20 @@ struct HomeView: View {
 
     @StateObject private var contactsVM = ContactsViewModel()
 
+    private func continueLocationPermissionFlow() {
+        if hasNearbyLocationAuthorization {
+            locationManager.retryLocationFix()
+        } else {
+            locationManager.requestAccessIfNeeded()
+        }
+        connectSocketIfReady()
+    }
+
+    private func openAppLocationSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
+    }
+
     private func attemptWrite(user: UserLocation) {
         let hydrated = hydrateUser(user)
         let contactsUsingApp = contactsVM.registered.count
@@ -1591,6 +1787,16 @@ struct HomeView: View {
     }
 
     private func refreshNearbyUsers() {
+        if let gateState = nearbyLocationGateState {
+            switch gateState {
+            case .needsPermission, .needsPreciseLocation, .locationUnavailable:
+                continueLocationPermissionFlow()
+            case .settingsRequired:
+                openAppLocationSettings()
+            }
+            return
+        }
+
         withAnimation(.easeInOut(duration: 0.2)) {
             isRefreshAnimating = true
         }
@@ -1603,9 +1809,18 @@ struct HomeView: View {
         pushAndFetchNearby(force: true, reason: "manual refresh")
     }
 
-    private func syncLocationMonitoring(for tab: HomeTab) {
+    private func syncLocationMonitoring(for tab: HomeTab, forceRefresh: Bool = false) {
         if tab == .home || tab == .list {
-            locationManager.requestAccessIfNeeded()
+            if locationManager.authorizationStatus == .notDetermined {
+                locationManager.requestAccessIfNeeded()
+                return
+            }
+            if forceRefresh {
+                locationManager.refreshAuthorizationState(force: true)
+                locationManager.beginMonitoringIfAuthorized(refreshState: false)
+            } else {
+                locationManager.beginMonitoringIfAuthorized()
+            }
         } else {
             locationManager.stopUpdating()
         }
@@ -1622,13 +1837,14 @@ struct HomeView: View {
     ///   - promptForLocation: Requests location access when no usable coordinate is currently available.
     ///   - reason: A short debug label describing why the refresh was triggered.
     private func pushAndFetchNearby(force: Bool = false, promptForLocation: Bool = false, reason: String) {
+        guard hasNearbyLocationAuthorization else {
+            print("[WS] Nearby refresh skipped (\(reason)): waiting for location permission")
+            if promptForLocation {
+                locationManager.requestAccessIfNeeded()
+            }
+            return
+        }
         guard socket.state.isConnected else {
-            print("[WS] Nearby refresh pending (\(reason)): socket state=\(socket.state.shortText)")
-            pendingNearbyRefresh = PendingNearbyRefresh(
-                force: force,
-                promptForLocation: promptForLocation,
-                reason: reason
-            )
             connectSocketIfReady()
             return
         }
@@ -1637,7 +1853,9 @@ struct HomeView: View {
             return
         }
         guard let coord = locationManager.effectiveCoordinate else {
-            print("[WS] Nearby refresh skipped (\(reason)): missing effective coordinate")
+            if reason != "periodic tick" {
+                print("[WS] Nearby refresh skipped (\(reason)): missing effective coordinate")
+            }
             if promptForLocation {
                 locationManager.requestAccessIfNeeded()
             }
@@ -1669,7 +1887,6 @@ struct HomeView: View {
         let lat = coord.latitude
         let lon = coord.longitude
         let currentName = UserDefaults.standard.string(forKey: "userName")
-        let currentEmail = UserDefaults.standard.string(forKey: "userEmail")
         let currentProfileURL = UserDefaults.standard.string(forKey: "userProfileUrl")
         print("[WS] Location updated and nearby refresh sent (\(reason)) lat=\(lat) lon=\(lon)")
 
@@ -1678,7 +1895,6 @@ struct HomeView: View {
             latitude: lat,
             longitude: lon,
             displayName: currentName,
-            email: currentEmail,
             profileUrl: currentProfileURL
         )
 
@@ -1689,7 +1905,6 @@ struct HomeView: View {
                 longitude: lon,
                 radiusMeters: 15,
                 displayName: currentName,
-                email: currentEmail,
                 profileUrl: currentProfileURL
             )
         }
@@ -1703,7 +1918,6 @@ struct HomeView: View {
                     longitude: lon,
                     radiusMeters: 15,
                     displayName: currentName,
-                    email: currentEmail,
                     profileUrl: currentProfileURL
                 )
             }

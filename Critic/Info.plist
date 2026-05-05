@@ -24,7 +24,7 @@
 	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
 	<dict>
 		<key>NearbyPrecisionLocation</key>
-		<string>Critic temporarily uses your precise location to improve nearby user detection.</string>
+		<string>Critic uses Precise Location while you use the app and sends it to Critic servers to calculate nearby matching, distances, and the live nearby view accurately.</string>
 	</dict>
 	<key>UIAppFonts</key>
 	<array>

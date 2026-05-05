@@ -30,17 +30,7 @@ enum NearbyLocationPolicy {
 enum DisplayNameResolver {
     static func resolve(displayName: String?, email: String? = nil, phone: String? = nil, userId: String?) -> String {
         if let name = preferredName(displayName, userId: userId) {
-            if let validEmail = normalizedEmail(name),
-               let local = validEmail.split(separator: "@", maxSplits: 1, omittingEmptySubsequences: true).first {
-                return String(local)
-            }
             return name
-        }
-
-        if let email = normalizedEmail(email),
-           let local = email.split(separator: "@", maxSplits: 1, omittingEmptySubsequences: true).first,
-           let emailName = preferredName(String(local), userId: userId) {
-            return emailName
         }
 
         if let userId,
@@ -49,28 +39,10 @@ enum DisplayNameResolver {
             if let storedName = preferredName(UserDefaults.standard.string(forKey: "userName"), userId: userId) {
                 return storedName
             }
-            if let email = normalizedEmail(UserDefaults.standard.string(forKey: "userEmail")),
-               let local = email.split(separator: "@", maxSplits: 1, omittingEmptySubsequences: true).first,
-               let emailName = preferredName(String(local), userId: userId) {
-                return emailName
-            }
-            if let phoneLabel = phoneDisplayLabel(UserDefaults.standard.string(forKey: "userPhone")) {
-                return phoneLabel
-            }
         }
 
         if let cachedName = preferredName(KnownUserDirectory.name(for: userId), userId: userId) {
             return cachedName
-        }
-
-        if let cachedEmail = normalizedEmail(email ?? KnownUserDirectory.email(for: userId)),
-           let local = cachedEmail.split(separator: "@", maxSplits: 1, omittingEmptySubsequences: true).first,
-           let emailName = preferredName(String(local), userId: userId) {
-            return emailName
-        }
-
-        if let cachedPhone = phoneDisplayLabel(phone ?? KnownUserDirectory.phone(for: userId)) {
-            return cachedPhone
         }
 
         if let fallback = fallbackUserLabel(userId) {
@@ -80,13 +52,9 @@ enum DisplayNameResolver {
         return "Nearby"
     }
 
-    static func homeHeaderName(storedName: String?, userId: String?, email: String?) -> String {
+    static func homeHeaderName(storedName: String?, userId: String?) -> String {
         if let name = preferredName(storedName, userId: userId) {
             return condensedHomeName(name)
-        }
-        if let email = normalizedEmail(email) {
-            let local = email.split(separator: "@", maxSplits: 1, omittingEmptySubsequences: true).first.map(String.init) ?? email
-            return condensedHomeName(local)
         }
         return "User"
     }
@@ -95,6 +63,8 @@ enum DisplayNameResolver {
         guard let trimmed = normalized(value) else { return nil }
         if let userId, trimmed == userId { return nil }
         if looksLikeOpaqueIdentifier(trimmed) { return nil }
+        if normalizedEmail(trimmed) != nil { return nil }
+        if normalizedPhone(trimmed) != nil { return nil }
         return trimmed
     }
 
@@ -141,15 +111,11 @@ enum DisplayNameResolver {
         return compact.unicodeScalars.allSatisfy { hexDigits.contains($0) }
     }
 
-    private static func phoneDisplayLabel(_ value: String?) -> String? {
-        guard let phone = normalizedPhone(value) else { return nil }
-        let digits = phone.filter(\.isNumber)
-        guard digits.count >= 4 else { return nil }
-        return String(digits.suffix(min(4, digits.count)))
-    }
-
     private static func fallbackUserLabel(_ userId: String?) -> String? {
         guard let raw = normalized(userId) else { return nil }
+        if normalizedEmail(raw) != nil || normalizedPhone(raw) != nil {
+            return nil
+        }
         if looksLikeOpaqueIdentifier(raw) {
             let trimmed = raw.replacingOccurrences(of: "-", with: "")
             return String(trimmed.suffix(min(6, trimmed.count))).uppercased()
@@ -160,8 +126,6 @@ enum DisplayNameResolver {
 
 enum KnownUserDirectory {
     private static let namesKey = "knownUserNames"
-    private static let emailsKey = "knownUserEmails"
-    private static let phonesKey = "knownUserPhones"
     private static let profileURLsKey = "knownUserProfileURLs"
 
     static func rememberCurrentUserFromDefaults() {
@@ -169,8 +133,8 @@ enum KnownUserDirectory {
         remember(
             userId: defaults.string(forKey: "userId"),
             displayName: defaults.string(forKey: "userName"),
-            email: defaults.string(forKey: "userEmail"),
-            phone: defaults.string(forKey: "userPhone"),
+            email: nil,
+            phone: nil,
             profileUrl: defaults.string(forKey: "userProfileUrl")
         )
     }
@@ -182,14 +146,6 @@ enum KnownUserDirectory {
             store(displayName, in: namesKey, for: userId)
         }
 
-        if let email = DisplayNameResolver.normalizedEmail(email) {
-            store(email, in: emailsKey, for: userId)
-        }
-
-        if let phone = DisplayNameResolver.normalizedPhone(phone) {
-            store(phone, in: phonesKey, for: userId)
-        }
-
         if let profileUrl = DisplayNameResolver.normalized(profileUrl) {
             store(profileUrl, in: profileURLsKey, for: userId)
         }
@@ -199,25 +155,13 @@ enum KnownUserDirectory {
         value(in: namesKey, for: userId)
     }
 
-    static func email(for userId: String?) -> String? {
-        value(in: emailsKey, for: userId)
-    }
-
-    static func phone(for userId: String?) -> String? {
-        value(in: phonesKey, for: userId)
-    }
-
     static func profileUrl(for userId: String?) -> String? {
         value(in: profileURLsKey, for: userId)
     }
 
     static func hydrated(_ user: UserLocation) -> UserLocation {
-        let resolvedEmail = user.email ?? email(for: user.id)
-        let resolvedPhone = user.phone ?? phone(for: user.id)
         let resolvedDisplayName = DisplayNameResolver.resolve(
             displayName: user.displayName ?? name(for: user.id),
-            email: resolvedEmail,
-            phone: resolvedPhone,
             userId: user.id
         )
 
@@ -227,8 +171,8 @@ enum KnownUserDirectory {
             longitude: user.longitude,
             profileImageName: user.profileImageName,
             displayName: resolvedDisplayName,
-            email: resolvedEmail,
-            phone: resolvedPhone,
+            email: nil,
+            phone: nil,
             profileUrl: user.profileUrl ?? profileUrl(for: user.id),
             distanceMeters: user.distanceMeters,
             isSimulated: user.isSimulated,
@@ -655,7 +599,7 @@ func resolvedUserDisplayName(_ user: UserLocation) -> String {
 /// - Returns: A stable string used to derive avatar visuals.
 func resolvedUserSeed(_ user: UserLocation) -> String {
     let name = resolvedUserDisplayName(user)
-    return name == "User" ? (user.email ?? user.id) : name
+    return name == "User" ? user.id : name
 }
 
 /// Computes the live distance from the current device location to another user.

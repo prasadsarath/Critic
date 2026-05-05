@@ -15,53 +15,32 @@ struct ContactsView: View {
             }
 
             if vm.permissionStatus == .notDetermined {
-                permissionPrompt
+                permissionRequestState
             } else if vm.loading {
                 loadingState
-            } else if let msg = vm.errorMessage {
+            } else if let msg = vm.errorMessage, !hasLoadedContacts {
                 errorState(message: msg)
             } else {
                 contactsList
             }
         }
         .background(CriticPalette.background.ignoresSafeArea())
-        .task { await vm.bootstrap() }
+        .task { await vm.requestAccessAndLoad() }
         .sheet(isPresented: $showShare) { ShareSheet2(items: [shareText]) }
     }
 
-    private var permissionPrompt: some View {
-        VStack(spacing: 14) {
+    private var hasLoadedContacts: Bool {
+        !vm.registered.isEmpty || !vm.invitable.isEmpty
+    }
+
+    private var contactsPermissionNeedsSettings: Bool {
+        vm.permissionStatus == .denied || vm.permissionStatus == .restricted
+    }
+
+    private var permissionRequestState: some View {
+        VStack {
             Spacer(minLength: 0)
-
-            Image(systemName: "person.crop.circle.badge.plus")
-                .font(.system(size: 42, weight: .semibold))
-                .foregroundColor(CriticPalette.primary)
-
-            Text("Find friends already on Critic")
-                .font(.critic(.pageTitle))
-                .foregroundColor(CriticPalette.onSurface)
-
-            Text("Allow contacts only when you want to see which friends are already using the app and who you can invite.")
-                .font(.critic(.body))
-                .foregroundColor(CriticPalette.onSurfaceMuted)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 24)
-
-            Button {
-                Task { await vm.requestAccessAndLoad() }
-            } label: {
-                Label("Allow Contacts", systemImage: "person.crop.circle.badge.checkmark")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(CriticFilledButtonStyle())
-            .padding(.horizontal, 24)
-
-            Button("Not Now") {
-                onClose()
-            }
-            .buttonStyle(CriticOutlinedButtonStyle())
-            .padding(.horizontal, 24)
-
+            ProgressView()
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -88,22 +67,24 @@ struct ContactsView: View {
                 .padding(.horizontal)
 
             HStack(spacing: 12) {
-                Button {
-                    if let url = URL(string: UIApplication.openSettingsURLString) {
-                        UIApplication.shared.open(url)
+                if contactsPermissionNeedsSettings {
+                    Button {
+                        if let url = URL(string: UIApplication.openSettingsURLString) {
+                            UIApplication.shared.open(url)
+                        }
+                    } label: {
+                        Label("Open Settings", systemImage: "gearshape.fill")
                     }
-                } label: {
-                    Label("Open Settings", systemImage: "gearshape.fill")
+                    .buttonStyle(.borderedProminent)
+                    .tint(.accentColor)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.accentColor)
 
                 Button {
                     Task { await vm.requestAccessAndLoad() }
                 } label: {
                     Label("Try Again", systemImage: "arrow.clockwise")
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.borderedProminent)
                 .tint(.accentColor)
             }
 
@@ -131,9 +112,9 @@ struct ContactsView: View {
                                 .foregroundColor(.accentColor)
                             VStack(alignment: .leading) {
                                 Text(user.name ?? "Friend").font(.body)
-                                if !user.phoneE164.isEmpty {
-                                    Text(user.phoneE164).font(.caption).foregroundColor(.secondary)
-                                }
+                                Text("On Critic")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
                             }
                             Spacer()
                             Button {
@@ -162,7 +143,7 @@ struct ContactsView: View {
                                 .foregroundColor(.accentColor)
                             VStack(alignment: .leading) {
                                 Text(c.displayName).font(.body)
-                                Text(c.phones.first ?? "")
+                                Text("Invite privately")
                                     .font(.caption).foregroundColor(.secondary)
                             }
                             Spacer()

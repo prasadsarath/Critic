@@ -287,7 +287,12 @@ struct OnboardingView: View {
                 }
                 .padding(.horizontal, 24)
                 .padding(.top, 18)
-                .padding(.bottom, 12)
+
+                CriticVersionLabel()
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 24)
+                    .padding(.top, 12)
+                    .padding(.bottom, 12)
             }
         }
     }

@@ -28,6 +28,7 @@ final class OIDCAuthManager: NSObject, ObservableObject {
     static let shared = OIDCAuthManager()
     private static let authStateAccount = "authState"
     private static let authStateService = Bundle.main.bundleIdentifier ?? "Critic.AuthState"
+    private static let installSentinelKey = "criticInstallSentinel.v1"
 
     private(set) var authState: OIDAuthState?
     var currentAuthorizationFlow: OIDExternalUserAgentSession?
@@ -51,6 +52,7 @@ final class OIDCAuthManager: NSObject, ObservableObject {
 
     override init() {
         super.init()
+        clearStaleKeychainStateAfterReinstallIfNeeded()
         loadAuthState()
     }
 
@@ -273,11 +275,11 @@ final class OIDCAuthManager: NSObject, ObservableObject {
                         let name = self.sanitizedCachedName(resolvedName, userId: userId)
 
                         if let email {
-                            print("[UserInfo] email=\(email)")
+                            print("[UserInfo] email=stored")
                             UserDefaults.standard.set(email, forKey: "userEmail")
                         }
                         if let phone {
-                            print("[UserInfo] phone=\(phone)")
+                            print("[UserInfo] phone=stored")
                             UserDefaults.standard.set(phone, forKey: "userPhone")
                         }
                         if let profileURL {
@@ -322,6 +324,25 @@ final class OIDCAuthManager: NSObject, ObservableObject {
     }
 
     // MARK: - Keychain Persistence
+    private func clearStaleKeychainStateAfterReinstallIfNeeded() {
+        let defaults = UserDefaults.standard
+        guard defaults.object(forKey: Self.installSentinelKey) == nil else { return }
+
+        let hasExistingAppContainerState =
+            defaults.object(forKey: "hasCompletedOnboarding") != nil ||
+            defaults.object(forKey: "isLoggedIn") != nil ||
+            defaults.string(forKey: "userId") != nil
+
+        if !hasExistingAppContainerState {
+            clearAuthKeychainItems()
+            defaults.set(false, forKey: "isLoggedIn")
+            defaults.set(true, forKey: "justLoggedOut")
+            print("[AuthState] fresh install detected; cleared any stale keychain auth state")
+        }
+
+        defaults.set(true, forKey: Self.installSentinelKey)
+    }
+
     func saveAuthState() {
         guard let state = authState else { return }
         if let data = try? NSKeyedArchiver.archivedData(withRootObject: state, requiringSecureCoding: true) {
@@ -382,6 +403,17 @@ final class OIDCAuthManager: NSObject, ObservableObject {
 
     func clearAuthState() {
         authState = nil
+        let (deleteStatus, legacyDeleteStatus) = clearAuthKeychainItems()
+        print("[AuthState] clear deleteStatus=\(deleteStatus) legacyDeleteStatus=\(legacyDeleteStatus)")
+        UserDefaults.standard.removeObject(forKey: "userId")
+        UserDefaults.standard.removeObject(forKey: "userEmail")
+        UserDefaults.standard.removeObject(forKey: "userName")
+        UserDefaults.standard.removeObject(forKey: "userPhone")
+        UserDefaults.standard.removeObject(forKey: "userProfileUrl")
+    }
+
+    @discardableResult
+    private func clearAuthKeychainItems() -> (deleteStatus: OSStatus, legacyDeleteStatus: OSStatus) {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: Self.authStateAccount,
@@ -393,12 +425,7 @@ final class OIDCAuthManager: NSObject, ObservableObject {
             kSecAttrAccount as String: Self.authStateAccount
         ]
         let legacyDeleteStatus = SecItemDelete(legacyQuery as CFDictionary)
-        print("[AuthState] clear deleteStatus=\(deleteStatus) legacyDeleteStatus=\(legacyDeleteStatus)")
-        UserDefaults.standard.removeObject(forKey: "userId")
-        UserDefaults.standard.removeObject(forKey: "userEmail")
-        UserDefaults.standard.removeObject(forKey: "userName")
-        UserDefaults.standard.removeObject(forKey: "userPhone")
-        UserDefaults.standard.removeObject(forKey: "userProfileUrl")
+        return (deleteStatus, legacyDeleteStatus)
     }
 
     func completeLocalLogout(
@@ -416,6 +443,7 @@ final class OIDCAuthManager: NSObject, ObservableObject {
             defaults.set(false, forKey: "hasCompletedOnboarding")
         }
         clearAuthState()
+        PostHogAnalytics.reset()
         NotificationCenter.default.post(name: .didLogout, object: nil)
     }
 
@@ -523,6 +551,7 @@ private extension OIDCAuthManager {
         if trimmed.caseInsensitiveCompare("guest") == .orderedSame { return nil }
         if let userId, trimmed == userId { return nil }
         if looksLikeOpaqueIdentifier(trimmed) { return nil }
+        if looksLikeEmail(trimmed) || looksLikePhone(trimmed) { return nil }
 
         return trimmed
     }
@@ -543,6 +572,15 @@ private extension OIDCAuthManager {
         return compact.unicodeScalars.allSatisfy { hexDigits.contains($0) }
     }
 
+    func looksLikeEmail(_ value: String) -> Bool {
+        value.contains("@")
+    }
+
+    func looksLikePhone(_ value: String) -> Bool {
+        let kept = value.filter { $0.isNumber || $0 == "+" }
+        return kept.filter(\.isNumber).count >= 4 && kept.count == value.filter { !$0.isWhitespace }.count
+    }
+
     func isVerified(claims: [String: Any]) -> Bool {
         claimIsTrue(claims["phone_number_verified"]) || claimIsTrue(claims["email_verified"])
     }
@@ -551,6 +589,7 @@ private extension OIDCAuthManager {
         DispatchQueue.main.async {
             let current = UserDefaults.standard.bool(forKey: "isLoggedIn")
             UserDefaults.standard.set(true, forKey: "isLoggedIn")
+            PostHogAnalytics.identifyCurrentUserIfAvailable()
             guard notify else { return }
             if !current {
                 NotificationCenter.default.post(name: .didLogin, object: nil)
@@ -604,16 +643,17 @@ private extension OIDCAuthManager {
             verified = isVerified(claims: claims)
 
             let resolvedName = name.isEmpty
-                ? (preferredUsername ?? cognitoUsername ?? email?.split(separator: "@").first.map(String.init))
+                ? (preferredUsername ?? cognitoUsername)
                 : name
             let cachedName = sanitizedCachedName(resolvedName, userId: sub)
 
-            print("\(prefix) ID Token claims: sub=\(sub ?? "nil"), email=\(email ?? "nil"), phone=\(phone ?? "nil"), name=\(cachedName ?? "nil") verified=\(verified)")
+            print("\(prefix) ID Token claims: sub=\(sub ?? "nil"), email=\(email == nil ? "nil" : "stored"), phone=\(phone == nil ? "nil" : "stored"), name=\(cachedName ?? "nil") verified=\(verified)")
 
             if let sub { UserDefaults.standard.set(sub, forKey: "userId") }
             if let email { UserDefaults.standard.set(email, forKey: "userEmail") }
             if let phone { UserDefaults.standard.set(phone, forKey: "userPhone") }
             if let profileURL { UserDefaults.standard.set(profileURL, forKey: "userProfileUrl") }
+            if sub != nil { PostHogAnalytics.identifyCurrentUserIfAvailable() }
             if let cachedName {
                 UserDefaults.standard.set(cachedName, forKey: "userName")
             } else if shouldClearCachedName(UserDefaults.standard.string(forKey: "userName"), userId: sub) {
@@ -827,8 +867,8 @@ extension OIDCAuthManager {
         let isLoggedIn = ud.bool(forKey: "isLoggedIn")
         let userId     = ud.string(forKey: "userId")   ?? "nil"
         let userName   = ud.string(forKey: "userName") ?? "nil"
-        let userEmail  = ud.string(forKey: "userEmail") ?? "nil"
-        let userPhone  = ud.string(forKey: "userPhone") ?? "nil"
+        let hasUserEmail = ud.string(forKey: "userEmail") != nil
+        let hasUserPhone = ud.string(forKey: "userPhone") != nil
 
         let exp = authState?.lastTokenResponse?.accessTokenExpirationDate
         let idTokenLen = authState?.lastTokenResponse?.idToken?.count ?? 0
@@ -836,7 +876,7 @@ extension OIDCAuthManager {
 
         print("""
         [User \(tag)] isLoggedIn=\(isLoggedIn) \
-        userId=\(userId) name=\(userName) email=\(userEmail) phone=\(userPhone) \
+        userId=\(userId) name=\(userName) email=\(hasUserEmail ? "stored" : "nil") phone=\(hasUserPhone ? "stored" : "nil") \
         accessTokenLen=\(accessLen) idTokenLen=\(idTokenLen) \
         accessTokenExp=\(exp?.description ?? "nil")
         """)
