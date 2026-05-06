@@ -1169,7 +1169,6 @@ struct InviteRow: View {
 // MARK: - Settings View (iOS 15 safe)
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
-    @AppStorage(PostHogAnalytics.analyticsEnabledKey) private var analyticsEnabled = true
 
     var onDeleteAccountConfirmed: () -> Void
 
@@ -1181,19 +1180,6 @@ struct SettingsView: View {
                 }
 
                 CriticSettingsSection(title: "Preferences") {
-                    CriticSettingsToggleRow(
-                        icon: "chart.line.uptrend.xyaxis",
-                        title: "Analytics",
-                        subtitle: "Help improve Critic with product analytics and session replay",
-                        iconColor: CriticPalette.primary,
-                        isOn: $analyticsEnabled
-                    )
-                    .onChange(of: analyticsEnabled) { enabled in
-                        PostHogAnalytics.setAnalyticsEnabled(enabled)
-                    }
-
-                    Divider().padding(.leading, 80)
-
                     Button {
                         AppReviewRequester.requestReview()
                     } label: {

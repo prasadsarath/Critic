@@ -443,7 +443,6 @@ final class OIDCAuthManager: NSObject, ObservableObject {
             defaults.set(false, forKey: "hasCompletedOnboarding")
         }
         clearAuthState()
-        PostHogAnalytics.reset()
         NotificationCenter.default.post(name: .didLogout, object: nil)
     }
 
@@ -589,7 +588,6 @@ private extension OIDCAuthManager {
         DispatchQueue.main.async {
             let current = UserDefaults.standard.bool(forKey: "isLoggedIn")
             UserDefaults.standard.set(true, forKey: "isLoggedIn")
-            PostHogAnalytics.identifyCurrentUserIfAvailable()
             guard notify else { return }
             if !current {
                 NotificationCenter.default.post(name: .didLogin, object: nil)
@@ -653,7 +651,6 @@ private extension OIDCAuthManager {
             if let email { UserDefaults.standard.set(email, forKey: "userEmail") }
             if let phone { UserDefaults.standard.set(phone, forKey: "userPhone") }
             if let profileURL { UserDefaults.standard.set(profileURL, forKey: "userProfileUrl") }
-            if sub != nil { PostHogAnalytics.identifyCurrentUserIfAvailable() }
             if let cachedName {
                 UserDefaults.standard.set(cachedName, forKey: "userName")
             } else if shouldClearCachedName(UserDefaults.standard.string(forKey: "userName"), userId: sub) {

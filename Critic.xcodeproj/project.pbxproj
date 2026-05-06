@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		291493BE2E266D9B007E2ED9 /* AppAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 291493BD2E266D9B007E2ED9 /* AppAuth */; };
-		7A5000012F9C000100000001 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 7A5000022F9C000100000001 /* PostHog */; };
 		7A0F00012F4B000100000001 /* Critic/Fonts in Resources */ = {isa = PBXBuildFile; fileRef = 7A0F00002F4B000100000001 /* Critic/Fonts */; };
 		7AFB10012F8B000100000001 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = 7AFB10002F8B000100000001 /* FirebaseCrashlytics */; };
 /* End PBXBuildFile section */
@@ -74,7 +73,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				291493BE2E266D9B007E2ED9 /* AppAuth in Frameworks */,
-				7A5000012F9C000100000001 /* PostHog in Frameworks */,
 				7AFB10012F8B000100000001 /* FirebaseCrashlytics in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -147,7 +145,6 @@
 			name = Critic;
 			packageProductDependencies = (
 				291493BD2E266D9B007E2ED9 /* AppAuth */,
-				7A5000022F9C000100000001 /* PostHog */,
 				7AFB10002F8B000100000001 /* FirebaseCrashlytics */,
 			);
 			productName = Critic;
@@ -234,7 +231,6 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				291493BC2E266D98007E2ED9 /* XCRemoteSwiftPackageReference "AppAuth-iOS" */,
-				7A5000032F9C000100000001 /* XCRemoteSwiftPackageReference "posthog-ios" */,
 				7AFB10032F8B000100000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -484,7 +480,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
-				MARKETING_VERSION = 1.0.6;
+				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.critic.Critic;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -525,7 +521,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
-				MARKETING_VERSION = 1.0.6;
+				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.critic.Critic;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -547,7 +543,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
 				MACOSX_DEPLOYMENT_TARGET = 15.4;
-				MARKETING_VERSION = 1.0.6;
+				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.critic.CriticTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -570,7 +566,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
 				MACOSX_DEPLOYMENT_TARGET = 15.4;
-				MARKETING_VERSION = 1.0.6;
+				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.critic.CriticTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -592,7 +588,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
 				MACOSX_DEPLOYMENT_TARGET = 15.4;
-				MARKETING_VERSION = 1.0.6;
+				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.critic.CriticUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -614,7 +610,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
 				MACOSX_DEPLOYMENT_TARGET = 15.4;
-				MARKETING_VERSION = 1.0.6;
+				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.critic.CriticUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -677,14 +673,6 @@
 				version = 2.0.0;
 			};
 		};
-		7A5000032F9C000100000001 /* XCRemoteSwiftPackageReference "posthog-ios" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/PostHog/posthog-ios.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 3.56.0;
-			};
-		};
 		7AFB10032F8B000100000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
@@ -700,11 +688,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 291493BC2E266D98007E2ED9 /* XCRemoteSwiftPackageReference "AppAuth-iOS" */;
 			productName = AppAuth;
-		};
-		7A5000022F9C000100000001 /* PostHog */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 7A5000032F9C000100000001 /* XCRemoteSwiftPackageReference "posthog-ios" */;
-			productName = PostHog;
 		};
 		7AFB10002F8B000100000001 /* FirebaseCrashlytics */ = {
 			isa = XCSwiftPackageProductDependency;
