@@ -328,19 +328,19 @@ final class OIDCAuthManager: NSObject, ObservableObject {
         let defaults = UserDefaults.standard
         guard defaults.object(forKey: Self.installSentinelKey) == nil else { return }
 
-        let hasExistingAppContainerState =
-            defaults.object(forKey: "hasCompletedOnboarding") != nil ||
-            defaults.object(forKey: "isLoggedIn") != nil ||
-            defaults.string(forKey: "userId") != nil
-
-        if !hasExistingAppContainerState {
-            clearAuthKeychainItems()
-            defaults.set(false, forKey: "isLoggedIn")
-            defaults.set(true, forKey: "justLoggedOut")
-            print("[AuthState] fresh install detected; cleared any stale keychain auth state")
-        }
+        authState = nil
+        clearAuthKeychainItems()
+        defaults.removeObject(forKey: "userId")
+        defaults.removeObject(forKey: "userEmail")
+        defaults.removeObject(forKey: "userName")
+        defaults.removeObject(forKey: "userPhone")
+        defaults.removeObject(forKey: "userProfileUrl")
+        defaults.set(false, forKey: "isLoggedIn")
+        defaults.set(false, forKey: "hasCompletedOnboarding")
+        defaults.set(true, forKey: "justLoggedOut")
 
         defaults.set(true, forKey: Self.installSentinelKey)
+        print("[AuthState] fresh install detected; reset stale keychain auth and onboarding state")
     }
 
     func saveAuthState() {
