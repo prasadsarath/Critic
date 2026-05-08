@@ -6,26 +6,28 @@ struct ContactsView: View {
     var onWrite: (_ userId: String, _ displayName: String?) -> Void
 
     @State private var showShare = false
-    @State private var shareText = "Hey! I’m using Critic to share quick reviews. Join me!"
+    @State private var shareText = "Hey! I’m using Kriticapp to share quick reviews. Join me!"
 
     var body: some View {
         VStack(spacing: 0) {
-            CriticDetailHeader(title: "Contacts") {
-                onClose()
-            }
-
             if vm.permissionStatus == .notDetermined {
                 permissionRequestState
-            } else if vm.loading {
-                loadingState
-            } else if let msg = vm.errorMessage, !hasLoadedContacts {
-                errorState(message: msg)
             } else {
-                contactsList
+                CriticDetailHeader(title: "Contacts") {
+                    onClose()
+                }
+
+                if vm.loading {
+                    loadingState
+                } else if let msg = vm.errorMessage, !hasLoadedContacts {
+                    errorState(message: msg)
+                } else {
+                    contactsList
+                }
             }
         }
         .background(CriticPalette.background.ignoresSafeArea())
-        .task { await vm.requestAccessAndLoad() }
+        .task { await vm.bootstrap() }
         .sheet(isPresented: $showShare) { ShareSheet2(items: [shareText]) }
     }
 
@@ -38,11 +40,44 @@ struct ContactsView: View {
     }
 
     private var permissionRequestState: some View {
-        VStack {
+        VStack(spacing: 18) {
             Spacer(minLength: 0)
-            ProgressView()
+
+            CriticSoftIcon(
+                systemName: "person.crop.circle.badge.checkmark",
+                color: CriticPalette.primary,
+                size: 68,
+                iconSize: 30,
+                opacity: 0.12
+            )
+
+            VStack(spacing: 10) {
+                Text("Find people you know")
+                    .font(.critic(.pageTitle))
+                    .foregroundColor(CriticPalette.onSurface)
+                    .multilineTextAlignment(.center)
+
+                Text("Kriticapp will send your contacts' phone numbers to Kriticapp servers to match people already on Kriticapp. We use them only for matching and do not store, share, or show them to other users.")
+                    .font(.critic(.body))
+                    .foregroundColor(CriticPalette.onSurfaceMuted)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: 520)
+
+            Button {
+                Task { await vm.requestAccessAndLoad() }
+            } label: {
+                Label("Continue", systemImage: "arrow.right.circle.fill")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(CriticFilledButtonStyle())
+            .frame(maxWidth: 520)
+
             Spacer(minLength: 0)
         }
+        .padding(.horizontal, 24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
@@ -102,9 +137,9 @@ struct ContactsView: View {
 
     private var contactsList: some View {
         List {
-            Section(header: Text("On Critic (\(vm.registered.count))")) {
+            Section(header: Text("On Kriticapp (\(vm.registered.count))")) {
                 if vm.registered.isEmpty {
-                    Text("None of your contacts are on Critic (yet).").foregroundColor(.secondary)
+                    Text("None of your contacts are on Kriticapp (yet).").foregroundColor(.secondary)
                 } else {
                     ForEach(vm.registered) { user in
                         HStack {
@@ -112,7 +147,7 @@ struct ContactsView: View {
                                 .foregroundColor(.accentColor)
                             VStack(alignment: .leading) {
                                 Text(user.name ?? "Friend").font(.body)
-                                Text("On Critic")
+                                Text("On Kriticapp")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
@@ -133,7 +168,7 @@ struct ContactsView: View {
                 }
             }
 
-            Section(header: Text("Invite to Critic (\(vm.invitable.count))")) {
+            Section(header: Text("Invite to Kriticapp (\(vm.invitable.count))")) {
                 if vm.invitable.isEmpty {
                     Text("No one to invite.").foregroundColor(.secondary)
                 } else {
@@ -148,7 +183,7 @@ struct ContactsView: View {
                             }
                             Spacer()
                             Button {
-                                shareText = "Hey \(c.displayName), join me on Critic! Download & ping me when you’re in."
+                                shareText = "Hey \(c.displayName), join me on Kriticapp! Download & ping me when you’re in."
                                 showShare = true
                             } label: {
                                 Text("Invite")

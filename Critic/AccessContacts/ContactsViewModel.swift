@@ -83,7 +83,7 @@ final class ContactsViewModel: ObservableObject {
 
     // MARK: Permission
     private var deniedMessage: String {
-        "Contacts access denied. To show which of your friends are on Critic, enable Contacts in Settings."
+        "Contacts access denied. To show which of your friends are on Kriticapp, enable Contacts in Settings."
     }
 
     private func refreshPermission() async {

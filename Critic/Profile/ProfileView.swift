@@ -869,7 +869,7 @@ private struct CriticTermsConsentRow: View {
                     .font(.system(size: 28, weight: .semibold))
                     .foregroundColor(CriticPalette.primary)
 
-                Text(isAccepted ? "I accept the Terms & Conditions." : "Accept the Terms & Conditions to continue.")
+                Text(isAccepted ? "I accept the Terms & Conditions, including no tolerance for objectionable content or abusive users." : "Accept the Terms & Conditions to continue.")
                     .font(.critic(.body))
                     .foregroundColor(CriticPalette.onSurface)
                     .multilineTextAlignment(.leading)
@@ -992,7 +992,7 @@ struct EditProfileView: View {
                         .font(.critic(.display))
                         .foregroundColor(CriticPalette.onSurface)
 
-                    Text("Critic is based on real people and trust. Please agree to our community rules before you continue.")
+                    Text("Kriticapp is based on real people and trust. Please agree to our community rules before you continue.")
                         .font(.critic(.body))
                         .foregroundColor(CriticPalette.onSurfaceMuted)
                         .fixedSize(horizontal: false, vertical: true)
@@ -1095,7 +1095,7 @@ struct InviteFriendsSheet: View {
                     VStack(spacing: 12) {
                         if isWhatsAppInstalled {
                             InviteRow(title: "WhatsApp", systemIcon: "message.fill") {
-                                let text = "Hey! Join me on Critic: \(inviteURL.absoluteString)"
+                                let text = "Hey! Join me on Kriticapp: \(inviteURL.absoluteString)"
                                 let encoded = text.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
                                 if let url = URL(string: "whatsapp://send?text=\(encoded)") {
                                     UIApplication.shared.open(url, options: [:], completionHandler: nil)
@@ -1133,7 +1133,7 @@ struct InviteFriendsSheet: View {
         }
         .environment(\.colorScheme, .light)
         .sheet(isPresented: $showShareSheet) {
-            ShareSheet(activityItems: ["Join me on Critic!", inviteURL])
+            ShareSheet(activityItems: ["Join me on Kriticapp!", inviteURL])
         }
     }
 }
@@ -1186,7 +1186,7 @@ struct SettingsView: View {
                         CriticSettingsRowLabel(
                             icon: "star.fill",
                             title: "Rate App",
-                            subtitle: "Tell us how Critic is working for you",
+                            subtitle: "Tell us how Kriticapp is working for you",
                             iconColor: CriticPalette.warning
                         )
                     }
@@ -1214,7 +1214,7 @@ struct SettingsView: View {
                         CriticSettingsRowLabel(
                             icon: "hand.raised.fill",
                             title: "Privacy Policy",
-                            subtitle: "See how Critic handles your data",
+                            subtitle: "See how Kriticapp handles your data",
                             iconColor: CriticPalette.primary
                         )
                     }
@@ -1230,6 +1230,25 @@ struct SettingsView: View {
                             title: "Contact Support",
                             subtitle: AppExternalLinks.contactEmail,
                             iconColor: CriticPalette.accent
+                        )
+                    }
+                    .buttonStyle(.plain)
+
+                    Divider().padding(.leading, 80)
+
+                    Button {
+                        UIApplication.shared.open(
+                            AppExternalLinks.contactMailtoURL(
+                                subject: "Report inappropriate activity",
+                                body: "Please describe the activity, user, post, or safety concern:"
+                            )
+                        )
+                    } label: {
+                        CriticSettingsRowLabel(
+                            icon: "exclamationmark.shield.fill",
+                            title: "Report Inappropriate Activity",
+                            subtitle: AppExternalLinks.contactEmail,
+                            iconColor: CriticPalette.error
                         )
                     }
                     .buttonStyle(.plain)
@@ -1293,7 +1312,7 @@ struct DeleteAccountView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("This permanently deletes your Critic account and associated app data.")
+                    Text("This permanently deletes your Kriticapp account and associated app data.")
                         .font(.critic(.display))
                         .foregroundColor(CriticPalette.onSurface)
 
@@ -1312,7 +1331,7 @@ struct DeleteAccountView: View {
 
                     deletionBullet("Your account is permanently deleted. We do not keep a user-facing retain or deactivate state.")
                     deletionBullet("Your sign-in access is blocked so you can’t log back in with the deleted account.")
-                    deletionBullet("Your Critic profile and associated app data are deleted, except where retention is legally required.")
+                    deletionBullet("Your Kriticapp profile and associated app data are deleted, except where retention is legally required.")
                     deletionBullet("If backend processing takes additional time, the app will tell you before signing you out.")
                 }
                 .padding(20)

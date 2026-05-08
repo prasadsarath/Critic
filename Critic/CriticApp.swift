@@ -143,14 +143,15 @@ private struct StartupLoadingView: View {
     }
 }
 
-/// Startup “welcome to Critic” screen that can auto-present the Hosted UI.
+/// Startup auth screen that can auto-present the Hosted UI.
 /// No business-logic changes—just prevents unwanted prompts while we're silently refreshing.
 import SwiftUI
 
-/// Startup “welcome to Critic” screen that can auto-present the Hosted UI.
+/// Startup auth screen that can auto-present the Hosted UI.
 /// No business-logic changes—just prevents unwanted prompts while we're silently refreshing.
 struct StartupAuthView: View {
     var autoPresent: Bool = true
+    @AppStorage("hasAcceptedCriticEULA") private var hasAcceptedCriticEULA: Bool = false
     @State private var hasAutoPresented = false
     @State private var safariItem: SafariItem? = nil
     @Environment(\.scenePhase) private var scenePhase
@@ -168,7 +169,7 @@ struct StartupAuthView: View {
                 Spacer(minLength: 12)
 
                 VStack(spacing: 8) {
-                    Text("Welcome to Critic")
+                    Text("Welcome to Kriticapp")
                         .font(.critic(.display))
                         .foregroundColor(CriticPalette.onSurface)
                         .multilineTextAlignment(.center)
@@ -210,7 +211,7 @@ struct StartupAuthView: View {
                             .resizable()
                             .scaledToFit()
                             .frame(width: 110, height: 110)
-                            .accessibilityLabel("Critic logo")
+                            .accessibilityLabel("Kriticapp logo")
                     }
 
                     VStack(spacing: 10) {
@@ -237,6 +238,36 @@ struct StartupAuthView: View {
                 Spacer(minLength: 24)
 
                 Button {
+                    hasAcceptedCriticEULA.toggle()
+                    if hasAcceptedCriticEULA {
+                        triggerAutoPresentIfNeeded(reason: "eula accepted")
+                    }
+                } label: {
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: hasAcceptedCriticEULA ? "checkmark.square.fill" : "square")
+                            .font(.system(size: 24, weight: .semibold))
+                            .foregroundColor(CriticPalette.primary)
+
+                        Text("I agree to Kriticapp's Terms & Conditions, including no tolerance for objectionable content or abusive users.")
+                            .font(.critic(.body))
+                            .foregroundColor(CriticPalette.onSurface)
+                            .multilineTextAlignment(.leading)
+
+                        Spacer(minLength: 0)
+                    }
+                    .padding(14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(CriticPalette.surface)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .stroke(CriticPalette.outline, lineWidth: 1)
+                            )
+                    )
+                }
+                .buttonStyle(.plain)
+
+                Button {
                     presentHostedUI()
                 } label: {
                     HStack(spacing: 10) {
@@ -247,8 +278,9 @@ struct StartupAuthView: View {
                     .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(CriticFilledButtonStyle())
+                .disabled(!hasAcceptedCriticEULA)
 
-                Text("By tapping Sign in, you agree to Critic's Terms & Conditions and Privacy Policy.")
+                Text("Reports are reviewed within 24 hours. We remove offending content and eject abusive users when violations are confirmed.")
                     .font(.critic(.caption))
                     .foregroundColor(CriticPalette.onSurfaceMuted)
                     .multilineTextAlignment(.center)
@@ -301,6 +333,10 @@ struct StartupAuthView: View {
     }
 
     private func triggerAutoPresentIfNeeded(reason: String, attempt: Int = 0) {
+        guard hasAcceptedCriticEULA else {
+            print("[Auth] Auto-present skipped until EULA acceptance. reason=\(reason)")
+            return
+        }
         guard autoPresent, !hasAutoPresented else {
             print("[Auth] Auto-present skipped (autoPresent=\(autoPresent) hasAutoPresented=\(hasAutoPresented)) reason=\(reason)")
             return
@@ -327,6 +363,7 @@ struct StartupAuthView: View {
     }
 
     private func presentHostedUI(using presenter: UIViewController? = nil) {
+        guard hasAcceptedCriticEULA else { return }
         guard !OIDCAuthManager.shared.isSigningIn else { return }
         let vc = presenter ?? UIApplication.shared.topViewController()
         guard let presenter = vc else {

@@ -140,7 +140,7 @@ struct WriteReviewView: View {
         .onReceive(tick) { _ in
             Task { await vm.handleTick() }
         }
-        .alert("Your Critic", isPresented: $vm.showValidationAlert) {
+        .alert("Kriticapp", isPresented: $vm.showValidationAlert) {
             Button("OK", role: .cancel) { }
         } message: {
             Text(vm.validationMessage)

@@ -75,6 +75,18 @@ private let reviewFeedPreviewFlag: Bool = {
 }()
 
 private let reviewFeedDebugLoggingEnabled = true
+private let reviewFeedInitialLoadRetryBudget: TimeInterval = 130
+private let reviewFeedTransientStatusCodes: Set<Int> = [429, 500, 502, 503, 504]
+
+private struct ReviewFeedHTTPError: LocalizedError {
+    let statusCode: Int
+    let payload: String
+
+    var errorDescription: String? {
+        let trimmed = payload.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "Server \(statusCode)" : "Server \(statusCode): \(trimmed)"
+    }
+}
 
 private func reviewFeedPrettyJSONString(from data: Data) -> String? {
     guard
@@ -104,6 +116,39 @@ private func reviewFeedPostSummary(_ item: PostItem, bucket: String, index: Int)
     """
 }
 
+private func reviewFeedRetryDelay(for attempt: Int) -> TimeInterval {
+    min(15, pow(2.0, Double(attempt)) * 1.5)
+}
+
+private func reviewFeedIsTransient(_ error: Error) -> Bool {
+    if let httpError = error as? ReviewFeedHTTPError {
+        return reviewFeedTransientStatusCodes.contains(httpError.statusCode)
+    }
+
+    if let apiError = error as? APIError {
+        switch apiError {
+        case .statusCode(let code, _):
+            return reviewFeedTransientStatusCodes.contains(code)
+        case .transport:
+            return true
+        default:
+            return false
+        }
+    }
+
+    let nsError = error as NSError
+    if nsError.domain == NSURLErrorDomain {
+        switch URLError.Code(rawValue: nsError.code) {
+        case .timedOut, .cannotFindHost, .cannotConnectToHost, .networkConnectionLost, .notConnectedToInternet, .dnsLookupFailed:
+            return true
+        default:
+            return false
+        }
+    }
+
+    return false
+}
+
 @MainActor
 final class ReviewFeedViewModel: ObservableObject {
     @Published var myPosts: [PostItem] = []
@@ -113,6 +158,7 @@ final class ReviewFeedViewModel: ObservableObject {
     @Published var hasLoadedOnce = false
 
     private var isFetching = false
+    private var locallyHiddenUserIds = Set<String>()
 
     private let listURL = AppEndpoints.Gateway.posts
     private let deleteURL = AppEndpoints.Gateway.deletePost
@@ -147,37 +193,17 @@ final class ReviewFeedViewModel: ObservableObject {
                 queryItems: [URLQueryItem(name: "userId", value: userId)],
                 authorization: .currentUser
             )
-            if reviewFeedDebugLoggingEnabled {
-                let storedName = UserDefaults.standard.string(forKey: "userName") ?? "nil"
-                let hasStoredEmail = UserDefaults.standard.string(forKey: "userEmail") != nil
-                print("[ReviewFeed] GET \(listURL.absoluteString)?userId=\(userId)")
-                print("[ReviewFeed] current identity userId=\(userId) userName=\(storedName) userEmail=\(hasStoredEmail ? "stored" : "nil")")
-            }
-            let (data, response) = try await APIRequestExecutor.shared.perform(request)
-            if reviewFeedDebugLoggingEnabled {
-                print("[ReviewFeed] response status=\(response.statusCode)")
-                if let raw = reviewFeedPrettyJSONString(from: data) {
-                    print("[ReviewFeed] raw response:\n\(raw)")
-                } else {
-                    print("[ReviewFeed] raw response: <non-utf8 \(data.count) bytes>")
-                }
-            }
-
-            if !(200..<300).contains(response.statusCode) {
-                let payload = String(data: data, encoding: .utf8) ?? ""
-                let msg = "Server \(response.statusCode): \(payload)"
-                throw NSError(domain: "Feed", code: response.statusCode, userInfo: [NSLocalizedDescriptionKey: msg])
-            }
+            let (data, response) = try await performFeedListRequest(request, userId: userId, allowTransientRetry: !hasLoadedOnce)
 
             let decoded = try JSONDecoder().decode(FeedResponse.self, from: data)
             let mySorted: [PostItem] = decoded.myPosts.sorted {
                 let a = parseDate($0.ScheduledTime) ?? parseDate($0.createdAt) ?? .distantPast
                 let b = parseDate($1.ScheduledTime) ?? parseDate($1.createdAt) ?? .distantPast
                 return a > b
-            }
+            }.filter { !isLocallyHidden($0) }
             let recvSorted: [PostItem] = decoded.receivedPosts.sorted {
                 (parseDate($0.createdAt) ?? .distantPast) > (parseDate($1.createdAt) ?? .distantPast)
-            }
+            }.filter { !isLocallyHidden($0) }
 
             KnownUserDirectory.rememberCurrentUserFromDefaults()
             (mySorted + recvSorted).forEach { item in
@@ -232,6 +258,59 @@ final class ReviewFeedViewModel: ObservableObject {
         }
     }
 
+    private func performFeedListRequest(
+        _ request: APIRequestDescriptor,
+        userId: String,
+        allowTransientRetry: Bool
+    ) async throws -> (Data, HTTPURLResponse) {
+        let startedAt = Date()
+        var attempt = 0
+
+        while true {
+            do {
+                if reviewFeedDebugLoggingEnabled {
+                    let storedName = UserDefaults.standard.string(forKey: "userName") ?? "nil"
+                    let hasStoredEmail = UserDefaults.standard.string(forKey: "userEmail") != nil
+                    let suffix = attempt == 0 ? "" : " attempt=\(attempt + 1)"
+                    print("[ReviewFeed] GET \(listURL.absoluteString)?userId=\(userId)\(suffix)")
+                    print("[ReviewFeed] current identity userId=\(userId) userName=\(storedName) userEmail=\(hasStoredEmail ? "stored" : "nil")")
+                }
+
+                let (data, response) = try await APIRequestExecutor.shared.perform(request)
+                if reviewFeedDebugLoggingEnabled {
+                    print("[ReviewFeed] response status=\(response.statusCode)")
+                    if let raw = reviewFeedPrettyJSONString(from: data) {
+                        print("[ReviewFeed] raw response:\n\(raw)")
+                    } else {
+                        print("[ReviewFeed] raw response: <non-utf8 \(data.count) bytes>")
+                    }
+                }
+
+                if !(200..<300).contains(response.statusCode) {
+                    let payload = String(data: data, encoding: .utf8) ?? ""
+                    throw ReviewFeedHTTPError(statusCode: response.statusCode, payload: payload)
+                }
+
+                return (data, response)
+            } catch {
+                guard allowTransientRetry, reviewFeedIsTransient(error) else {
+                    throw error
+                }
+
+                let delay = reviewFeedRetryDelay(for: attempt)
+                guard Date().timeIntervalSince(startedAt) + delay <= reviewFeedInitialLoadRetryBudget else {
+                    throw error
+                }
+
+                attempt += 1
+                if reviewFeedDebugLoggingEnabled {
+                    print("[ReviewFeed] transient initial load failure: \(error.localizedDescription). Retrying in \(String(format: "%.1f", delay))s")
+                }
+                try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            }
+        }
+    }
+
     func delete(postId: String) async -> Bool {
         guard currentReviewFeedUserId() != nil else { return false }
         do {
@@ -247,6 +326,26 @@ final class ReviewFeedViewModel: ObservableObject {
         } catch {
             return false
         }
+    }
+
+    func hidePostsLocally(from userId: String) {
+        let normalized = userId.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !normalized.isEmpty else { return }
+        locallyHiddenUserIds.insert(normalized)
+        myPosts.removeAll {
+            ($0.sender?.userId ?? $0.senderId ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == normalized
+                || ($0.receiver?.userId ?? $0.receiverId ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == normalized
+        }
+        receivedPosts.removeAll {
+            ($0.sender?.userId ?? $0.senderId ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == normalized
+                || ($0.receiver?.userId ?? $0.receiverId ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == normalized
+        }
+    }
+
+    private func isLocallyHidden(_ item: PostItem) -> Bool {
+        let sender = (item.sender?.userId ?? item.senderId ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let receiver = (item.receiver?.userId ?? item.receiverId ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return locallyHiddenUserIds.contains(sender) || locallyHiddenUserIds.contains(receiver)
     }
 
     func abort(postId: String) async -> Bool {

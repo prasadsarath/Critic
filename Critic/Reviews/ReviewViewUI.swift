@@ -299,6 +299,9 @@ private struct PostCardRow: View {
                     Label("Delete", systemImage: "trash")
                 }
             case .received:
+                Button(role: .destructive) { onDeleteTapped() } label: {
+                    Label("Delete", systemImage: "trash")
+                }
                 Button { onReportTapped() } label: {
                     Label("Report", systemImage: "exclamationmark.bubble")
                 }
@@ -731,7 +734,11 @@ struct ReviewFeedView: View {
                 let target = pendingBlockUserId
                 pendingBlockUserId = nil
                 if let uid = target {
-                    Task { _ = await vm.blockUser(targetUserId: uid, reason: "user-initiated") }
+                    Task {
+                        if await vm.blockUser(targetUserId: uid, reason: "user-initiated") {
+                            vm.hidePostsLocally(from: uid)
+                        }
+                    }
                 }
             }
         } message: {

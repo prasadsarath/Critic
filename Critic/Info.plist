@@ -24,7 +24,7 @@
 	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
 	<dict>
 		<key>NearbyPrecisionLocation</key>
-		<string>Critic temporarily uses your precise location to improve nearby user detection.</string>
+		<string>Kriticapp temporarily uses your precise location to improve nearby user detection.</string>
 	</dict>
 	<key>UIAppFonts</key>
 	<array>

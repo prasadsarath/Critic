@@ -798,20 +798,20 @@ private enum NearbyLocationGateState {
         case .needsPermission: return "Enable location for nearby"
         case .needsPreciseLocation: return "Enable Precise Location"
         case .locationUnavailable: return "Current location unavailable"
-        case .settingsRequired: return "Location is off for Critic"
+        case .settingsRequired: return "Location is off for Kriticapp"
         }
     }
 
     var message: String {
         switch self {
         case .needsPermission:
-            return "Critic uses your location while you use the app. Your location is sent to Critic servers to show nearby people and reviews and update the live nearby view."
+            return "Kriticapp uses your location while you use the app. Your location is sent to Kriticapp servers to show nearby people and reviews and update the live nearby view."
         case .needsPreciseLocation:
-            return "Critic uses Precise Location while you use the app and sends it to Critic servers to calculate nearby matching, distances, and the live nearby view accurately."
+            return "Kriticapp uses Precise Location while you use the app and sends it to Kriticapp servers to calculate nearby matching, distances, and the live nearby view accurately."
         case .locationUnavailable:
-            return "Critic has location permission, but iOS has not provided a usable location yet. Keep Location Services and Precise Location on, then try again."
+            return "Kriticapp has location permission, but iOS has not provided a usable location yet. Keep Location Services and Precise Location on, then try again."
         case .settingsRequired:
-            return "To use the live nearby view, enable Location for Critic in Settings. Critic sends your location to Critic servers only while you use the app to show nearby people and reviews."
+            return "To use the live nearby view, enable Location for Kriticapp in Settings. Kriticapp sends your location to Kriticapp servers only while you use the app to show nearby people and reviews."
         }
     }
 
@@ -912,8 +912,8 @@ struct HomeView: View {
     // UI update stream
     @State private var nearbyCancellable: AnyCancellable?
 
-    // keep sim ticking
-    private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    // Keep nearby presence fresh without hammering the websocket backend.
+    private let tick = Timer.publish(every: 10, on: .main, in: .common).autoconnect()
 
     @State private var selectedUser: UserLocation?
     @State private var selectedDistance: Double?
@@ -972,8 +972,8 @@ struct HomeView: View {
         let reason: String
     }
 
-    private let nearbyRefreshCooldown: TimeInterval = 2
-    private let nearbyRefreshDistanceThreshold: CLLocationDistance = 3
+    private let nearbyRefreshCooldown: TimeInterval = 10
+    private let nearbyRefreshDistanceThreshold: CLLocationDistance = 5
     private var isRunningPreview: Bool {
         ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
     }
@@ -1909,19 +1909,6 @@ struct HomeView: View {
             )
         }
 
-        if force {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.65) {
-                guard self.isHomeActive, self.socket.state.isConnected else { return }
-                self.socket.sendGetNearbyUsers(
-                    userId: uid,
-                    latitude: lat,
-                    longitude: lon,
-                    radiusMeters: 15,
-                    displayName: currentName,
-                    profileUrl: currentProfileURL
-                )
-            }
-        }
     }
 
     private func handleTagToggle(for user: UserLocation) {

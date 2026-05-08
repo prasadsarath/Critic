@@ -59,7 +59,7 @@ struct OnboardingView: View {
             highlights: [
                 "Review your post before sharing.",
                 "Post now or schedule for later.",
-                "Find friends on Critic and invite more people."
+                "Find friends on Kriticapp and invite more people."
             ],
             primaryColor: Color(hex: 0xF97316),
             secondaryColor: Color(hex: 0xEF4444),
