@@ -474,7 +474,7 @@ struct ReviewFeedView: View {
     }
 
     private var emptyCountLabel: String {
-        activeTabValue == 0 ? "0 critics received" : "0 critics posted"
+        activeTabValue == 0 ? "0 kritics received" : "0 kritics posted"
     }
 
     init(initialTab: Int = 0, tabSelection: Binding<Int>? = nil, showNavigationTitle: Bool = true, showsTabBar: Bool = true) {
@@ -981,3 +981,4 @@ struct ReviewFeedView_Previews: PreviewProvider {
         NavigationView { ReviewFeedView() }
     }
 }
+

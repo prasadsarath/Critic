@@ -152,6 +152,7 @@ import SwiftUI
 struct StartupAuthView: View {
     var autoPresent: Bool = true
     @AppStorage("hasAcceptedCriticEULA") private var hasAcceptedCriticEULA: Bool = false
+    @AppStorage("hasConfirmedAge18Plus") private var hasConfirmedAge18Plus: Bool = false
     @State private var hasAutoPresented = false
     @State private var safariItem: SafariItem? = nil
     @Environment(\.scenePhase) private var scenePhase
@@ -268,6 +269,36 @@ struct StartupAuthView: View {
                 .buttonStyle(.plain)
 
                 Button {
+                    hasConfirmedAge18Plus.toggle()
+                    if hasConfirmedAge18Plus {
+                        triggerAutoPresentIfNeeded(reason: "age confirmed")
+                    }
+                } label: {
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: hasConfirmedAge18Plus ? "checkmark.square.fill" : "square")
+                            .font(.system(size: 24, weight: .semibold))
+                            .foregroundColor(CriticPalette.primary)
+
+                        Text("I confirm that I am 18+ years old.")
+                            .font(.critic(.body))
+                            .foregroundColor(CriticPalette.onSurface)
+                            .multilineTextAlignment(.leading)
+
+                        Spacer(minLength: 0)
+                    }
+                    .padding(14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(CriticPalette.surface)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .stroke(CriticPalette.outline, lineWidth: 1)
+                            )
+                    )
+                }
+                .buttonStyle(.plain)
+
+                Button {
                     presentHostedUI()
                 } label: {
                     HStack(spacing: 10) {
@@ -278,7 +309,7 @@ struct StartupAuthView: View {
                     .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(CriticFilledButtonStyle())
-                .disabled(!hasAcceptedCriticEULA)
+                .disabled(!hasAcceptedCriticEULA || !hasConfirmedAge18Plus)
 
                 Text("Reports are reviewed within 24 hours. We remove offending content and eject abusive users when violations are confirmed.")
                     .font(.critic(.caption))
@@ -333,8 +364,8 @@ struct StartupAuthView: View {
     }
 
     private func triggerAutoPresentIfNeeded(reason: String, attempt: Int = 0) {
-        guard hasAcceptedCriticEULA else {
-            print("[Auth] Auto-present skipped until EULA acceptance. reason=\(reason)")
+        guard hasAcceptedCriticEULA && hasConfirmedAge18Plus else {
+            print("[Auth] Auto-present skipped until EULA+Age acceptance. reason=\(reason)")
             return
         }
         guard autoPresent, !hasAutoPresented else {
@@ -363,7 +394,7 @@ struct StartupAuthView: View {
     }
 
     private func presentHostedUI(using presenter: UIViewController? = nil) {
-        guard hasAcceptedCriticEULA else { return }
+        guard hasAcceptedCriticEULA && hasConfirmedAge18Plus else { return }
         guard !OIDCAuthManager.shared.isSigningIn else { return }
         let vc = presenter ?? UIApplication.shared.topViewController()
         guard let presenter = vc else {

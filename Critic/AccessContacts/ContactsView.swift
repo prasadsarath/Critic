@@ -63,6 +63,12 @@ struct ContactsView: View {
                     .multilineTextAlignment(.center)
                     .lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
+                
+                Text("By tapping Continue, you consent to upload your contacts' phone numbers to Kriticapp servers solely for matching.")
+                    .font(.critic(.caption))
+                    .foregroundColor(CriticPalette.onSurfaceMuted)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: 520)
 
@@ -205,3 +211,4 @@ struct ContactsView: View {
         .refreshable { await vm.refresh() }
     }
 }
+

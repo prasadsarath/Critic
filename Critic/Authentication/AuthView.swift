@@ -598,7 +598,7 @@ private extension HomeTab {
             )
         case .posts:
             return .init(
-                title: "Critics",
+                title: "Kritics",
                 symbol: "bubble.left.and.bubble.right",
                 selectedSymbol: "bubble.left.and.bubble.right.fill",
                 accent: UIColor(Color(hex: 0xF97316))
