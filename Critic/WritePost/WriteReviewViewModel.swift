@@ -62,8 +62,8 @@ final class WriteReviewViewModel: ObservableObject {
     private let navigationManager: NavigationManager
     private var suppressTextInvalidation = false
 
-    private let moderationURL = AppEndpoints.Lambda.moderation
-    private let postURL = AppEndpoints.Lambda.post
+    private let moderationURL = AppEndpoints.Gateway.moderation
+    private let postURL = AppEndpoints.Gateway.createPost
 
     init(navigationManager: NavigationManager? = nil) {
         self.navigationManager = navigationManager ?? NavigationManager.shared
@@ -178,7 +178,8 @@ final class WriteReviewViewModel: ObservableObject {
             let request = APIRequestDescriptor(
                 url: moderationURL,
                 method: .POST,
-                body: try APIRequestDescriptor.jsonBody(body)
+                body: try APIRequestDescriptor.jsonBody(body),
+                authorization: .currentUser
             )
             let (data, http) = try await APIRequestExecutor.shared.perform(request)
             print("[Moderation] status=\(http.statusCode)")
@@ -188,22 +189,26 @@ final class WriteReviewViewModel: ObservableObject {
                               userInfo: [NSLocalizedDescriptionKey: msg ?? "HTTP \(http.statusCode)"])
             }
 
-            struct ChatMessage: Codable { let content: String? }
-            struct ChatChoice: Codable { let message: ChatMessage? }
-            struct ChatResponse: Codable { let choices: [ChatChoice]? }
-
-            let chat = try? JSONDecoder().decode(ChatResponse.self, from: data)
-            let moderated = chat?.choices?.first?.message?.content?.trimmingCharacters(in: .whitespacesAndNewlines)
-
-            if let text = moderated, !text.isEmpty {
-                suppressTextInvalidation = true
-                reviewText = text
-                reviewApproved = true
-                await showMessage("Looks good! You can post now or schedule within 24 hours.")
-            } else {
+            guard let decision = moderationDecision(from: data) else {
+                print("[Moderation] unrecognized response=\(String(data: data, encoding: .utf8) ?? "<non-utf8>")")
                 reviewApproved = false
                 scheduledAt = nil
-                await showMessage("As per guidelines, please modify your content.")
+                await showMessage("Moderation response was unclear. Please try again.")
+                return
+            }
+
+            switch decision {
+            case .approved(let replacement, let message):
+                suppressTextInvalidation = true
+                if let replacement {
+                    reviewText = replacement
+                }
+                reviewApproved = true
+                await showMessage(message)
+            case .rejected(let message):
+                reviewApproved = false
+                scheduledAt = nil
+                await showMessage(message)
             }
         } catch {
             reviewApproved = false
@@ -394,6 +399,196 @@ final class WriteReviewViewModel: ObservableObject {
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
         let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
         try? await center.add(request)
+    }
+
+    private enum ModerationDecision {
+        case approved(replacement: String?, message: String)
+        case rejected(message: String)
+    }
+
+    private func moderationDecision(from data: Data) -> ModerationDecision? {
+        guard !data.isEmpty else { return nil }
+
+        if let object = try? JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed]) {
+            return moderationDecision(fromJSONObject: object)
+        }
+
+        guard let raw = String(data: data, encoding: .utf8) else { return nil }
+        return moderationDecision(fromText: raw)
+    }
+
+    private func moderationDecision(fromJSONObject object: Any) -> ModerationDecision? {
+        if let isHateSpeech = object as? Bool {
+            return isHateSpeech ? .rejected(message: moderationRejectedMessage)
+                                : .approved(replacement: nil, message: moderationApprovedMessage)
+        }
+
+        if let dict = object as? [String: Any] {
+            if let body = dict["body"] as? String,
+               let bodyDecision = moderationDecision(fromBodyString: body) {
+                return bodyDecision
+            }
+
+            if let choices = dict["choices"] as? [[String: Any]],
+               let first = choices.first,
+               let message = first["message"] as? [String: Any],
+               let content = message["content"] as? String {
+                return moderationDecision(fromText: content)
+            }
+
+            if let approved = boolValue(in: dict, keys: ["approved", "allowed", "safe", "is_safe", "isSafe"]) {
+                return approved ? .approved(replacement: nil, message: moderationApprovedMessage)
+                                : .rejected(message: moderationRejectedMessage(from: dict))
+            }
+
+            if let flagged = boolValue(in: dict, keys: ["flagged", "blocked", "unsafe", "is_hate", "isHate", "toxic", "offensive"]) {
+                return flagged ? .rejected(message: moderationRejectedMessage(from: dict))
+                               : .approved(replacement: nil, message: moderationApprovedMessage)
+            }
+
+            for key in ["moderated_text", "moderatedText", "rewritten", "rewrite", "cleaned_text", "cleanedText"] {
+                if let text = cleanString(dict[key]), !text.isEmpty {
+                    return .approved(replacement: text, message: moderationApprovedMessage)
+                }
+            }
+
+            for key in ["result", "message", "content", "text", "output", "classification", "label"] {
+                if let text = cleanString(dict[key]),
+                   let decision = moderationDecision(fromText: text) {
+                    return decision
+                }
+            }
+        }
+
+        if let array = object as? [Any] {
+            for item in array {
+                if let decision = moderationDecision(fromJSONObject: item) {
+                    return decision
+                }
+            }
+        }
+
+        if let text = object as? String {
+            return moderationDecision(fromText: text)
+        }
+
+        return nil
+    }
+
+    private func moderationDecision(fromBodyString body: String) -> ModerationDecision? {
+        let trimmedBody = body.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedBody.isEmpty else { return nil }
+
+        if let bodyData = trimmedBody.data(using: .utf8),
+           let object = try? JSONSerialization.jsonObject(with: bodyData, options: [.fragmentsAllowed]),
+           let decision = moderationDecision(fromJSONObject: object) {
+            return decision
+        }
+
+        return moderationDecision(fromText: trimmedBody)
+    }
+
+    private func moderationDecision(fromText rawText: String) -> ModerationDecision? {
+        let text = rawText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return nil }
+
+        let normalized = text.lowercased()
+        if normalized == "false" {
+            return .approved(replacement: nil, message: moderationApprovedMessage)
+        }
+        if normalized == "true" {
+            return .rejected(message: moderationRejectedMessage)
+        }
+
+        let approvedSignals = [
+            "safe",
+            "allowed",
+            "approved",
+            "not hate",
+            "no hate",
+            "not offensive",
+            "not toxic",
+            "non-toxic",
+            "non toxic",
+            "no violation",
+            "does not violate"
+        ]
+        if approvedSignals.contains(where: { normalized.contains($0) }) {
+            return .approved(replacement: nil, message: moderationApprovedMessage)
+        }
+
+        let rejectedSignals = [
+            "hate",
+            "toxic",
+            "offensive",
+            "blocked",
+            "unsafe",
+            "reject",
+            "rejected",
+            "violate",
+            "violates",
+            "modify your content",
+            "not allowed"
+        ]
+        if rejectedSignals.contains(where: { normalized.contains($0) }) {
+            return .rejected(message: text == moderationApprovedMessage ? moderationRejectedMessage : text)
+        }
+
+        if looksLikeUserContent(text) {
+            return .approved(replacement: text, message: moderationApprovedMessage)
+        }
+
+        return nil
+    }
+
+    private var moderationApprovedMessage: String {
+        "Looks good! You can post now or schedule within 24 hours."
+    }
+
+    private var moderationRejectedMessage: String {
+        "As per guidelines, please modify your content."
+    }
+
+    private func moderationRejectedMessage(from dict: [String: Any]) -> String {
+        for key in ["reason", "message", "error"] {
+            if let text = cleanString(dict[key]), !text.isEmpty {
+                return text
+            }
+        }
+        return moderationRejectedMessage
+    }
+
+    private func boolValue(in dict: [String: Any], keys: [String]) -> Bool? {
+        for key in keys {
+            if let value = dict[key] as? Bool {
+                return value
+            }
+            if let text = cleanString(dict[key])?.lowercased() {
+                if ["true", "yes", "1", "safe", "allowed", "approved"].contains(text) {
+                    return true
+                }
+                if ["false", "no", "0", "unsafe", "blocked", "rejected"].contains(text) {
+                    return false
+                }
+            }
+        }
+        return nil
+    }
+
+    private func cleanString(_ value: Any?) -> String? {
+        if let text = value as? String {
+            return text.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if let number = value as? NSNumber {
+            return number.stringValue
+        }
+        return nil
+    }
+
+    private func looksLikeUserContent(_ text: String) -> Bool {
+        let normalized = text.lowercased()
+        let classifierWords = ["safe", "allowed", "approved", "clean", "pass", "passed", "ok", "okay"]
+        return text.count > 12 && !classifierWords.contains(normalized)
     }
 
     private func showMessage(_ text: String) async {

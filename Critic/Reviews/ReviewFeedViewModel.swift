@@ -163,7 +163,7 @@ final class ReviewFeedViewModel: ObservableObject {
     private let listURL = AppEndpoints.Gateway.posts
     private let deleteURL = AppEndpoints.Gateway.deletePost
     private let abortURL = AppEndpoints.Gateway.deletePost
-    private let reportURL = AppEndpoints.Lambda.report
+    private let reportURL = AppEndpoints.Gateway.reportPost
 
     private let blockService = BlockService()
 
@@ -375,7 +375,8 @@ final class ReviewFeedViewModel: ObservableObject {
             let request = APIRequestDescriptor(
                 url: reportURL,
                 method: .POST,
-                body: try APIRequestDescriptor.jsonBody(payload)
+                body: try APIRequestDescriptor.jsonBody(payload),
+                authorization: .currentUser
             )
             _ = try await APIRequestExecutor.shared.perform(request)
             return true
@@ -386,7 +387,10 @@ final class ReviewFeedViewModel: ObservableObject {
 
     func fetchReportReasons() async -> [(id: String, text: String)] {
         do {
-            let request = APIRequestDescriptor(url: reportURL)
+            let request = APIRequestDescriptor(
+                url: reportURL,
+                authorization: .currentUser
+            )
             let (data, response) = try await APIRequestExecutor.shared.perform(request)
             guard (200..<300).contains(response.statusCode) else {
                 return []
@@ -412,7 +416,8 @@ final class ReviewFeedViewModel: ObservableObject {
                 queryItems: [
                     URLQueryItem(name: "postId", value: postId),
                     URLQueryItem(name: "reporterId", value: reporterId)
-                ]
+                ],
+                authorization: .currentUser
             )
             let (data, _) = try await APIRequestExecutor.shared.perform(request)
             if let outer = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {

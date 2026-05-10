@@ -103,6 +103,13 @@ struct WriteReviewView: View {
                 .buttonStyle(CriticFilledButtonStyle())
                 .disabled(!vm.canReview)
 
+                Text("Reports are reviewed within 24 hours. Offending content and users may be removed. Report inappropriate activity from post options or Settings.")
+                    .font(.critic(.caption))
+                    .foregroundColor(CriticPalette.onSurfaceMuted)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 8)
+
                 HStack(spacing: 10) {
                     Button {
                         Task { await vm.postNow() }

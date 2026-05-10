@@ -1708,9 +1708,10 @@ struct HomeView: View {
             .alert(item: $activeAlert) { payload in
                 switch payload.type {
                 case .trace(let user):
+                    let contactCount = contactsVM.registered.count
                     return Alert(
-                        title: Text("You are more traceable"),
-                        message: Text("Only \(nearbyUsers.count) users are nearby. You may be easier to trace. This is a disclaimer — you can continue to write and post."),
+                        title: Text("Limited Kriticapp contacts"),
+                        message: Text("Kriticapp found \(contactCount) of your contacts on the platform. With a smaller contact group, your post may be easier to associate with you. You can still continue to write and post."),
                         primaryButton: .cancel(Text("Cancel"), action: { activeAlert = nil }),
                         secondaryButton: .default(Text("Continue"), action: {
                             let hydrated = hydrateUser(user)
