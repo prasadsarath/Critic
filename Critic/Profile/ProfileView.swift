@@ -1253,6 +1253,16 @@ struct SettingsView: View {
                     }
                     .buttonStyle(.plain)
                 }
+                
+                CriticSettingsSection(title: "Moderation") {
+                    CriticSettingsRowLabel(
+                        icon: "exclamationmark.shield.fill",
+                        title: "Safety and moderation",
+                        subtitle: "We review reports within 24 hours and remove offending content and users.",
+                        iconColor: CriticPalette.success,
+                        showsChevron: false
+                    )
+                }
 
                 CriticSettingsSection(title: "Account") {
                     NavigationLink {

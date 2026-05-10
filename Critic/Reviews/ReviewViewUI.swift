@@ -448,6 +448,7 @@ struct ReviewFeedView: View {
     @State private var otherText: String = ""
     @State private var sendInProgress = false
     @State private var reportError: String?
+    @State private var reportSuccessMessage: String?
 
     // External profile navigation (local)
     @State private var pushExternalProfile = false
@@ -759,6 +760,14 @@ struct ReviewFeedView: View {
                 onDismiss: { showReportSheet = false }
             )
         }
+        .alert("Report Sent", isPresented: Binding(
+            get: { reportSuccessMessage != nil },
+            set: { if !$0 { reportSuccessMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) { reportSuccessMessage = nil }
+        } message: {
+            Text(reportSuccessMessage ?? "Thanks. Your report was sent.")
+        }
     }
 
     // MARK: - Report Sheet View (nested)
@@ -951,6 +960,7 @@ struct ReviewFeedView: View {
 
         let ok = await vm.report(postId: item.postId, reason: reasonText)
         if ok {
+            reportSuccessMessage = "Thanks. Your report was sent. We review reports within 24 hours and remove offending content and users."
             showReportSheet = false
             Task { await vm.load() }
         } else {
@@ -967,6 +977,7 @@ struct ReviewFeedView: View {
 
         let ok = await vm.report(postId: item.postId, reason: "other - \(text)")
         if ok {
+            reportSuccessMessage = "Thanks. Your report was sent. We review reports within 24 hours and remove offending content and users."
             showReportSheet = false
             Task { await vm.load() }
         } else {
