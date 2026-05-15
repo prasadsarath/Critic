@@ -103,7 +103,7 @@ struct WriteReviewView: View {
                 .buttonStyle(CriticFilledButtonStyle())
                 .disabled(!vm.canReview)
 
-                Text("Reports are reviewed within 24 hours. Offending content and users may be removed. Report inappropriate activity from post options or Settings.")
+                Text("We enforce a zero-tolerance policy for objectionable content and abuse. All reports are reviewed within 24 hours. Violating content is removed immediately, and offending users are permanently banned.")
                     .font(.critic(.caption))
                     .foregroundColor(CriticPalette.onSurfaceMuted)
                     .multilineTextAlignment(.center)

@@ -229,7 +229,7 @@ struct StartupAuthView: View {
                         _StartupFeatureLine(
                             systemName: "checklist.checked",
                             title: "Moderated posting",
-                            subtitle: "Posts are reviewed to keep conversations respectful."
+                            subtitle: "We enforce a zero-tolerance policy for objectionable content and abuse. All reports are reviewed within 24 hours. Violating content is removed immediately, and offending users are permanently banned."
                         )
                     }
                     .padding(.horizontal, 4)
@@ -249,7 +249,7 @@ struct StartupAuthView: View {
                             .font(.system(size: 24, weight: .semibold))
                             .foregroundColor(CriticPalette.primary)
 
-                        Text("I agree to Kriticapp's Terms & Conditions, including no tolerance for objectionable content or abusive users.")
+                        Text("I agree to Kriticapp's Terms & Conditions, including Kriticapp's zero-tolerance policy for objectionable content and abuse.")
                             .font(.critic(.body))
                             .foregroundColor(CriticPalette.onSurface)
                             .multilineTextAlignment(.leading)
@@ -311,7 +311,7 @@ struct StartupAuthView: View {
                 .buttonStyle(CriticFilledButtonStyle())
                 .disabled(!hasAcceptedCriticEULA || !hasConfirmedAge18Plus)
 
-                Text("Reports are reviewed within 24 hours. We remove offending content and eject abusive users when violations are confirmed.")
+                Text("We enforce a zero-tolerance policy for objectionable content and abuse. All reports are reviewed within 24 hours. Violating content is removed immediately, and offending users are permanently banned.")
                     .font(.critic(.caption))
                     .foregroundColor(CriticPalette.onSurfaceMuted)
                     .multilineTextAlignment(.center)
