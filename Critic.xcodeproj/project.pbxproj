@@ -466,9 +466,6 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Critic/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Kriticapp;
-				INFOPLIST_KEY_NSContactsUsageDescription = "If you allow Contacts access, Kriticapp will send your contacts' phone numbers to Kriticapp servers to match people already on Kriticapp. They are used only for matching and are not stored, shared, or shown to other users.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Kriticapp uses your location while you use the app. Your location is sent to Kriticapp servers to show nearby people and reviews and update the live nearby view.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Kriticapp lets you choose and upload a profile photo from your photo library.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -507,9 +504,6 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Critic/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Kriticapp;
-				INFOPLIST_KEY_NSContactsUsageDescription = "If you allow Contacts access, Kriticapp will send your contacts' phone numbers to Kriticapp servers to match people already on Kriticapp. They are used only for matching and are not stored, shared, or shown to other users.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Kriticapp uses your location while you use the app. Your location is sent to Kriticapp servers to show nearby people and reviews and update the live nearby view.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Kriticapp lets you choose and upload a profile photo from your photo library.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;

@@ -23,11 +23,17 @@
 		<string>fb</string>
 		<string>snapchat</string>
 	</array>
+	<key>NSContactsUsageDescription</key>
+	<string>If you allow Contacts access, Kriticapp will send your contacts' phone numbers to Kriticapp servers to match people already on Kriticapp. They are used only for matching and are not stored, shared, or shown to other users.</string>
 	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
 	<dict>
 		<key>NearbyPrecisionLocation</key>
 		<string>Kriticapp temporarily uses your precise location to improve nearby user detection.</string>
 	</dict>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Kriticapp uses your location while you use the app. Your location is sent to Kriticapp servers to show nearby people and reviews and update the live nearby view.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Kriticapp lets you choose a profile photo from your photo library and uploads the selected image to Kriticapp servers to display it on your profile.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Fonts/Manrope-Bold.ttf</string>
